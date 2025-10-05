@@ -25,7 +25,7 @@ async def hello(interaction: discord.Interaction):
 # Import the token
 # You really think i'm dumb enough to leave my bot token in a public repo
 with open("token.txt", "r") as file:
-    token = file.read()
+    token = file.read().strip()
 
 # Run the bot
 bot.run(token)
