@@ -18,13 +18,11 @@ async def on_ready():
         print(f"Error syncing commands: {e}")
 
 # Define a slash command
-@bot.tree.command(name="hello", description="Say hello to the bot!")
-async def hello(interaction: discord.Interaction):
-    await interaction.response.send_message(f"👋 Hello, {interaction.user.display_name}!")
+@bot.tree.command(name="ping", description="Gets the ping of the bot. Mainly used for debug purposes.")
+async def ping(ctx):
+    await ctx.send(f'Pong! {round (bot.latency * 1000)} ms') # Fetches the ping and sends it as a message.
 
-# Import the token
-# You really think i'm dumb enough to leave my bot token in a public repo
-with open("token.txt", "r") as file:
+with open("token.txt", "r") as file: # Imports my Discord bot token from an external file (The bot token is very important, so that is why it is hidden and not listed here)
     token = file.read().strip()
 
 # Run the bot
