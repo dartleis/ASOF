@@ -19,8 +19,8 @@ async def on_ready():
 
 # Define a slash command
 @bot.tree.command(name="ping", description="Gets the ping of the bot. Mainly used for debug purposes.")
-async def ping(ctx):
-    await ctx.send(f'Pong! {round (bot.latency * 1000)} ms') # Fetches the ping and sends it as a message.
+async def ping(interaction: discord.Interaction):
+    await interaction.response.send_message(f' Pong! {round (bot.latency * 1000)} ms')
 
 with open("token.txt", "r") as file: # Imports my Discord bot token from an external file (The bot token is very important, so that is why it is hidden and not listed here)
     token = file.read().strip()
