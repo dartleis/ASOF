@@ -7,7 +7,7 @@ intents = discord.Intents.default()
 intents.message_content = True  # Allow the bot to read message content
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Event: When the bot is ready
+# Syncs slash commands and prints any errors on startup or startup success to the console
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
@@ -17,7 +17,7 @@ async def on_ready():
     except Exception as e:
         print(f"Error syncing commands: {e}")
 
-# Define a slash command
+# Code for "/ping"
 @bot.tree.command(name="ping", description="Gets the ping of the bot. Mainly used for debug purposes.")
 async def ping(interaction: discord.Interaction):
     await interaction.response.send_message(f' Pong! {round (bot.latency * 1000)} ms')
@@ -25,5 +25,4 @@ async def ping(interaction: discord.Interaction):
 with open("token.txt", "r") as file: # Imports my Discord bot token from an external file (The bot token is very important, so that is why it is hidden and not listed here)
     token = file.read().strip()
 
-# Run the bot
-bot.run(token)
+bot.run(token) # Runs the bot using the imported token
