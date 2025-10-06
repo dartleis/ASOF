@@ -74,7 +74,7 @@ async def on_member_remove(member):
         save_points(data)
         print(f"Marked {member.name} as left at {datetime.now().isoformat()}")
 
-@tasks.loop(hours=CLEANUP_INTERVAL_HOURS)
+@tasks.loop(hours=JSON_CLEANUP_INTERVAL)
 async def cleanup_inactive_users():
     data = load_points()
     now = datetime.now()
