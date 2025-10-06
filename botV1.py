@@ -24,6 +24,22 @@ def save_points(data):        # Defines the save points function
     with open(POINTS_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
+def cleanup_inactive_users():        # Defines the cleanup inactive users function
+    points_data = load_points()
+    now = datetime.utcnow()
+    removed = []
+
+    for user_id, info in list(points_data.items()):
+        if "last_seen" in info:
+            last_seen = datetime.fromisoformat(info["last_seen"])
+            if (now - last_seen) > timedelta(days=INACTIVE_DAYS):
+                removed.append(user_id)
+                del points_data[user_id]
+
+    if removed:
+        print(f"🧹 Removed inactive users: {removed}")
+        save_points(points_data)
+
 def get_points(user_id: int):        # Defines the get points function
     data = load_points()
     return data.get(str(user_id), 0)
@@ -37,6 +53,7 @@ def add_points(user_id: int, amount: int):        # Defines the add points funct
 intents = discord.Intents.default()
 intents.message_content = True        # Allow the bot to read message content
 intents.members = True        # Allows the bot to track member joins/leaves, essential for automatically adding/removing users from the points file
+intents.guilds = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 cleanup_inactive_users.start()
 
