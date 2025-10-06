@@ -38,6 +38,43 @@ intents = discord.Intents.default()
 intents.message_content = True        # Allow the bot to read message content
 intents.members = True        # Allows the bot to track member joins/leaves, essential for automatically adding/removing users from the points file
 bot = commands.Bot(command_prefix="!", intents=intents)
+cleanup_inactive_users.start()
+
+# Adds new members to points.json
+@bot.event
+async def on_member_join(member):
+    data = load_points()
+    if str(member.id) not in data:
+        data[str(member.id)] = {"points": 0, "left_at": None}
+        save_points(data)
+        print(f"Added new member to points.json: {member.name}")
+
+# Removes members from points.json after leaving
+@bot.event
+async def on_member_remove(member):
+    data = load_points()
+    if str(member.id) in data:
+        data[str(member.id)]["left_at"] = datetime.now().isoformat()
+        save_points(data)
+        print(f"Marked {member.name} as left at {datetime.now().isoformat()}")
+
+@tasks.loop(hours=CLEANUP_INTERVAL_HOURS)
+async def cleanup_inactive_users():
+    data = load_points()
+    now = datetime.now()
+    removed = 0
+
+    for uid, info in list(data.items()):
+        if info.get("left_at"):
+            left_time = datetime.fromisoformat(info["left_at"])
+            if now - left_time > timedelta(days=REMOVE_AFTER_DAYS):
+                del data[uid]
+                removed += 1
+
+    if removed > 0:
+        save_points(data)
+        print(f"Removed {removed} users inactive for over {REMOVE_AFTER_DAYS} days.")
+
 
 # Syncs slash commands and prints any exceptions (errors) on startup to the console
 @bot.event
