@@ -55,7 +55,6 @@ intents.message_content = True        # Allow the bot to read message content
 intents.members = True        # Allows the bot to track member joins/leaves, essential for automatically adding/removing users from the points file
 intents.guilds = True
 bot = commands.Bot(command_prefix="!", intents=intents)
-cleanup_inactive_users.start()
 
 # Adds new members to points.json
 @bot.event
@@ -102,6 +101,14 @@ async def on_ready():
         print(f"Synced {len(synced)} slash command(s)")
     except Exception as e:
         print(f"Error syncing commands: {e}")
+    
+    for guild in bot.guilds:
+        print(f"🔍 Checking members in: {guild.name}")
+        await add_all_members(guild)
+
+    if not cleanup_inactive_users.is_running():
+        cleanup_inactive_users.start()
+
 
 # Code for /ping
 @bot.tree.command(name="ping", description="Gets the ping of the bot. Mainly used for debug purposes.")
