@@ -6,7 +6,6 @@ import json
 import os
 import asyncio
 from datetime import datetime, timedelta
-import base64
 
 # Config
 POINTS_FILE = "points.json"        # Defines the points file as points.json
@@ -73,7 +72,7 @@ async def points_add(interaction: discord.Interaction, user: discord.User, amoun
 
 
 
-with open("token.txt", "r") as file:        # Imports my encoded Discord bot token from an external file (The bot token is very important, so that is why it is hidden and not listed here)
+with open("token.txt", "r") as file:        # Imports my Discord bot token from an external file (The bot token is very important, so that is why it is hidden and not listed here)
     token = file.read().strip()
 
-bot.run(base64.b64decode(token))        # Decodes my encoded bot token and runs the bot with it
+bot.run(token)
