@@ -72,7 +72,7 @@ intents.message_content = True        # Allow the bot to read message content
 intents.members = True        # Allows the bot to track who is in the server
 intents.guilds = True
 bot = commands.Bot(command_prefix="!", intents=intents)
-bot.tree.add_command(points)
+bot.tree.add_command(points_group)
 
 
 # Adds new members to points.json
