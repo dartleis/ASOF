@@ -60,6 +60,8 @@ intents.message_content = True        # Allow the bot to read message content
 intents.members = True        # Allows the bot to track who is in the server
 intents.guilds = True
 bot = commands.Bot(command_prefix="!", intents=intents)
+bot.tree.add_command(points_group)
+
 
 # Adds new members to points.json
 @bot.event
@@ -189,11 +191,6 @@ async def check(interaction: discord.Interaction, user: discord.User = None):
 async def add(interaction: discord.Interaction, user: discord.User, amount: int):
     add_points(user.id, amount)
     await interaction.response.send_message(f"Added **{amount}** points to **{user.display_name}**!")
-
-# Register the group
-bot.tree.add_command(points_group)
-
-
 
 with open("token.txt", "r") as file:        # Imports my Discord bot token from an external file (The bot token is very important, so that is why it is hidden and not listed here)
     token = file.read().strip()
