@@ -12,6 +12,14 @@ POINTS_FILE = "points.json"        # Defines the points file as points.json
 JSON_CLEANUP_INTERVAL = 12        # How often to check if members have left the server, in hours
 REMOVE_AFTER_DAYS = 30        # How long to wait after a member has left the server to remove them from the points file, in days
 
+# Create a bot instance
+intents = discord.Intents.default()
+intents.message_content = True        # Allow the bot to read message content
+intents.members = True        # Allows the bot to track who is in the server
+intents.guilds = True
+bot = commands.Bot(command_prefix="!", intents=intents)
+bot.tree.add_command(points_group)
+
 # Defines functions related to the points system
 def load_points():        # Defines the load points function
     if not os.path.exists(POINTS_FILE):
@@ -63,15 +71,6 @@ def set_points(user_id: int, amount: int):        # Defines the set points funct
 
     data[user_id_str] ["points"] == amount
     save_points(data)
-
-# Create a bot instance
-intents = discord.Intents.default()
-intents.message_content = True        # Allow the bot to read message content
-intents.members = True        # Allows the bot to track who is in the server
-intents.guilds = True
-bot = commands.Bot(command_prefix="!", intents=intents)
-bot.tree.add_command(points_group)
-
 
 # Adds new members to points.json
 @bot.event
