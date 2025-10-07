@@ -168,7 +168,7 @@ async def points_add(interaction: discord.Interaction, user: discord.User, amoun
 '''
 
 # Creates points command group
-points_group = app_commands.Group(name="points")
+points_group = app_commands.Group(name="points", description="EXP system")
 
 # /points check command
 @points_group.command(name="check", description="Check the points of you or another member")
