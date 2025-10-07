@@ -72,6 +72,7 @@ intents.message_content = True        # Allow the bot to read message content
 intents.members = True        # Allows the bot to track who is in the server
 intents.guilds = True
 bot = commands.Bot(command_prefix="!", intents=intents)
+points_group = app_commands.Group(name="points", description="EXP system")
 bot.tree.add_command(points_group)
 
 
@@ -180,9 +181,6 @@ async def points_add(interaction: discord.Interaction, user: discord.User, amoun
     add_points(user.id, amount)
     await interaction.response.send_message(f"Added **{amount}** points to **{user.display_name}**!")
 '''
-
-# Creates points command group
-points_group = app_commands.Group(name="points", description="EXP system")
 
 # /points check command
 @points_group.command(name="check", description="Check the points of you or another member")
