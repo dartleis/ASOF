@@ -57,7 +57,7 @@ def add_points(user_id: int, amount: int):        # Defines the add points funct
 # Create a bot instance
 intents = discord.Intents.default()
 intents.message_content = True        # Allow the bot to read message content
-intents.members = True        # Allows the bot to track member joins/leaves, essential for automatically adding/removing users from the points file
+intents.members = True        # Allows the bot to track who is in the server
 intents.guilds = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -131,7 +131,7 @@ async def on_ready():
         print(f"Error syncing commands: {e}")
     
     for guild in bot.guilds:
-        print(f"🔍 Checking members in: {guild.name}")
+        print(f"Checking members in: {guild.name}")
         await add_all_members(guild)
 
     if not cleanup_inactive_users.is_running():
