@@ -24,7 +24,7 @@ def save_points(data):        # Defines the save points function
     with open(POINTS_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-def cleanup_inactive_users():        # Defines the cleanup inactive users function
+def manual_cleanup_inactive_users():
     points_data = load_points()
     now = datetime.utcnow()
     removed = []
@@ -32,7 +32,7 @@ def cleanup_inactive_users():        # Defines the cleanup inactive users functi
     for user_id, info in list(points_data.items()):
         if "last_seen" in info:
             last_seen = datetime.fromisoformat(info["last_seen"])
-            if (now - last_seen) > timedelta(days=INACTIVE_DAYS):
+            if (now - last_seen) > timedelta(days=REMOVE_AFTER_DAYS):
                 removed.append(user_id)
                 del points_data[user_id]
 
@@ -42,11 +42,16 @@ def cleanup_inactive_users():        # Defines the cleanup inactive users functi
 
 def get_points(user_id: int):        # Defines the get points function
     data = load_points()
-    return data.get(str(user_id), 0)
+    return data.get(str(user_id), {}).get("points", 0)
 
 def add_points(user_id: int, amount: int):        # Defines the add points function
     data = load_points()
-    data[str(user_id)] = data.get(str(user_id), 0) + amount
+    user_id_str = str(user_id)
+
+    if user_id_str not in data:
+        data[user_id_str] = {"points": 0, "left_at": None}
+
+    data[user_id_str]["points"] += amount
     save_points(data)
 
 # Create a bot instance
@@ -76,6 +81,7 @@ async def on_member_remove(member):
 
 @tasks.loop(hours=JSON_CLEANUP_INTERVAL)
 async def cleanup_inactive_users():
+    manual_cleanup_inactive_users()
     data = load_points()
     now = datetime.now()
     removed = 0
@@ -91,8 +97,30 @@ async def cleanup_inactive_users():
         save_points(data)
         print(f"Removed {removed} users inactive for over {REMOVE_AFTER_DAYS} days.")
 
+async def add_all_members(guild):
+    points_data = load_points()
+    added = 0
 
-# Syncs slash commands and prints any exceptions (errors) on startup to the console
+    for member in guild.members:
+        # Skip bot accounts
+        if member.bot:
+            continue
+
+        user_id = str(member.id)
+        if user_id not in points_data:
+            points_data[user_id] = {
+                "points": 0,
+                "last_seen": datetime.utcnow().isoformat(),
+                "left_at": None
+            }
+            added += 1
+
+        await asyncio.sleep(0.1)  # Adds a small delay when adding members to prevent hitting Discord rate limits. 0.1 = 10 members per second
+        print(f"Added {member.name} to points.json")
+
+    save_points(points_data)
+    print(f"✅ Added {added} existing members to the database from {guild.name}")
+
 @bot.event
 async def on_ready():
     print(f"Logged in successfully as {bot.user}")
