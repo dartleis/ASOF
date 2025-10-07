@@ -7,22 +7,22 @@ import os
 import asyncio
 from datetime import datetime, timedelta
 
-# Config
+# Constants
 POINTS_FILE = "points.json"        # Defines the points file as points.json
 JSON_CLEANUP_INTERVAL = 12        # How often to check if members have left the server, in hours
 REMOVE_AFTER_DAYS = 30        # How long to wait after a member has left the server to remove them from the points file, in days
 
 
 
-# Defines functions related to the points system
-def load_points():        # Defines the load points function
+
+def load_points():  
     if not os.path.exists(POINTS_FILE):
         with open(POINTS_FILE, "w") as f:
             json.dump({}, f)
     with open(POINTS_FILE, "r") as f:
         return json.load(f)
 
-def save_points(data):        # Defines the save points function
+def save_points(data):      
     with open(POINTS_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
@@ -56,14 +56,14 @@ def add_points(user_id: int, amount: int):        # Defines the add points funct
     data[user_id_str]["points"] += amount
     save_points(data)
 
-def set_points(user_id: int, amount: int):        # Defines the set points function
+def set_points(user_id: int, amount: int):        
     data = load_points()
     user_id_str = str(user_id)
     
     if user_id_str not in data:
         data[user_id_str] = {"points": 0, "left_at": None}
 
-    data[user_id_str] ["points"] == amount
+    data[user_id_str] ["points"] = amount
     save_points(data)
 
 # Create a bot instance
