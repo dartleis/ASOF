@@ -54,6 +54,16 @@ def add_points(user_id: int, amount: int):        # Defines the add points funct
     data[user_id_str]["points"] += amount
     save_points(data)
 
+def set_points(user_id: int, amount: int):        # Defines the set points function
+    data - load_points()
+    user_id_str = str(user.id)
+    
+    if user_id_str not in data:
+        data[user_id_str] = {"points": 0, "left_at": None}
+
+    data[user_id_str] ["points"] == amount
+    save_points(data)
+
 # Create a bot instance
 intents = discord.Intents.default()
 intents.message_content = True        # Allow the bot to read message content
@@ -179,9 +189,9 @@ async def check(interaction: discord.Interaction, user: discord.User = None):
     target = user or interaction.user
     points = get_points(target.id)
     if points >= 1000:
-        await interaction.response.send_message(f"🤑**{target.display_name}** has **{points}** points.")
+        await interaction.response.send_message(f"🤑 **{target.display_name}** has **{points}** points.")
     elif points == 100:
-        await interaction.response.send_message(f"💯**{target.display_name}** has **{points}** points.")
+        await interaction.response.send_message(f"💯 **{target.display_name}** has **{points}** points.")
     else:
         await interaction.response.send_message(f"**{target.display_name}** has **{points}** points.")
 
@@ -190,9 +200,23 @@ async def check(interaction: discord.Interaction, user: discord.User = None):
 @app_commands.describe(user="User to add points to", amount="How many points to add")
 async def add(interaction: discord.Interaction, user: discord.User, amount: int):
     add_points(user.id, amount)
-    await interaction.response.send_message(f"Added **{amount}** points to **{user.display_name}**!")
+    await interaction.response.send_message(f"Added **{amount}** points to **{user.display_name}**, bringing their total to **{get_points(user.id)}**.")
 
-with open("token.txt", "r") as file:        # Imports my Discord bot token from an external file (The bot token is very important, so that is why it is hidden and not listed here)
+# /points subtract command
+@points_group.command(name="subtract", description="Remove points from a user")
+@app_commands.describe(user="User to remove points from", amount="How many points to remove")
+async def subtract(interaction: discord.Interaction, user: discord.User, amount: int):
+    add_points(user.id, -abs(amount))
+    await interaction.response.send_message(f"Removed **{abs(amount)}** points from **{user.display_name}**, bringing their total to **{get_points(user.id)}**.")
+
+# /points set command
+@points_group.command(name="set", description="Set the points of a user")
+@app_commands.describe(user="User to set the points of", amount="Amount of points to set")
+async def set(interaction: discord.Interaction, user: discord.User, amount: int):
+    set_points(user.id, amount)
+    await interaction.response.send_message(f"Set the points of **{user.display_name}** to **{amount}**")
+
+with open("token.txt", "r") as file:        # Imports the Discord bot token from a secure external file
     token = file.read().strip()
 
 bot.run(token)
