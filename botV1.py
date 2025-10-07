@@ -83,7 +83,7 @@ async def on_member_remove(member):
 async def cleanup_inactive_users():
     manual_cleanup_inactive_users()
     data = load_points()
-    now = datetime.now()
+    now = datetime.now() 
     removed = 0
 
     for uid, info in list(data.items()):
@@ -119,7 +119,7 @@ async def add_all_members(guild):
         print(f"Added {member.name} to points.json")
 
     save_points(points_data)
-    print(f"✅ Added {added} existing members to the database from {guild.name}")
+    print(f"Added {added} existing members to the database from {guild.name}")
 
 @bot.event
 async def on_ready():
@@ -141,7 +141,7 @@ async def on_ready():
 # Code for /ping
 @bot.tree.command(name="ping", description="Gets the ping of the bot. Mainly used for debug purposes.")
 async def ping(interaction: discord.Interaction):
-    await interaction.response.send_message(f' Pong! {round (bot.latency * 1000)} ms', ephmeral=True)
+    await interaction.response.send_message(f' Pong! {round (bot.latency * 1000)} ms', ephemeral=True)
 
 # Code for /points_check
 @bot.tree.command(name="points_check", description="Check your or another user's points")
@@ -149,7 +149,13 @@ async def ping(interaction: discord.Interaction):
 async def points_check(interaction: discord.Interaction, user: discord.User = None):
     target = user or interaction.user
     points = get_points(target.id)
-    await interaction.response.send_message(f"💰 **{target.display_name}** has **{points}** points.")
+    if points >= 1000:
+        await interaction.response.send_message(f"🤑**{target.display_name}** has **{points}** points.")
+    elif points == 100:
+        await interaction.response.send_message(f"💯**{target.display_name}** has **{points}** points.")
+    else
+        await interaction.response.send_message(f"**{target.display_name}** has **{points}** points.")
+        
 
 # Code for /points_add
 @bot.tree.command(name="points_add", description="Add points to a user")
@@ -157,7 +163,7 @@ async def points_check(interaction: discord.Interaction, user: discord.User = No
 async def points_add(interaction: discord.Interaction, user: discord.User, amount: int):
 
     add_points(user.id, amount)
-    await interaction.response.send_message(f"✅ Added **{amount}** points to **{user.display_name}**!")
+    await interaction.response.send_message(f"Added **{amount}** points to **{user.display_name}**!")
 
 
 
