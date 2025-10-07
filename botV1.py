@@ -153,7 +153,7 @@ async def points_check(interaction: discord.Interaction, user: discord.User = No
         await interaction.response.send_message(f"🤑**{target.display_name}** has **{points}** points.")
     elif points == 100:
         await interaction.response.send_message(f"💯**{target.display_name}** has **{points}** points.")
-    else
+    else:
         await interaction.response.send_message(f"**{target.display_name}** has **{points}** points.")
         
 
