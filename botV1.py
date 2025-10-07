@@ -7,13 +7,9 @@ import os
 import asyncio
 from datetime import datetime, timedelta
 
-# Constants
 POINTS_FILE = "points.json"        # Defines the points file as points.json
 JSON_CLEANUP_INTERVAL = 12        # How often to check if members have left the server, in hours
 REMOVE_AFTER_DAYS = 30        # How long to wait after a member has left the server to remove them from the points file, in days
-
-
-
 
 def load_points():  
     if not os.path.exists(POINTS_FILE):
