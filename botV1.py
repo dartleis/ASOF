@@ -143,18 +143,18 @@ async def on_ready():
 async def ping(interaction: discord.Interaction):
     await interaction.response.send_message(f' Pong! {round (bot.latency * 1000)} ms', ephmeral=True)
 
-# Code for /points check
-@bot.tree.command(name="points check", description="Check your or another user's points")
+# Code for /points_check
+@bot.tree.command(name="points_check", description="Check your or another user's points")
 @app_commands.describe(user="The user to check (optional)")
-async def "points check"(interaction: discord.Interaction, user: discord.User = None):
+async def points_check(interaction: discord.Interaction, user: discord.User = None):
     target = user or interaction.user
     points = get_points(target.id)
     await interaction.response.send_message(f"💰 **{target.display_name}** has **{points}** points.")
 
-# Code for /points add
-@bot.tree.command(name="points add", description="Add points to a user")
+# Code for /points_add
+@bot.tree.command(name="points_add", description="Add points to a user")
 @app_commands.describe(user="The user to add points to", amount="How many points to add")
-async def "points add"(interaction: discord.Interaction, user: discord.User, amount: int):
+async def points_add(interaction: discord.Interaction, user: discord.User, amount: int):
 
     add_points(user.id, amount)
     await interaction.response.send_message(f"✅ Added **{amount}** points to **{user.display_name}**!")
