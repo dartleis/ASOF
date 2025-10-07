@@ -24,7 +24,7 @@ def save_points(data):
 
 def manual_cleanup_inactive_users():
     points_data = load_points()
-    now = datetime.utcnow()
+    now = datetime.now(tz=utc)
     removed = []
 
     for user_id, info in list(points_data.items()):
@@ -121,7 +121,7 @@ async def add_all_members(guild):
         if user_id not in points_data:
             points_data[user_id] = {
                 "points": 0,
-                "last_seen": datetime.utcnow().isoformat(),
+                "last_seen": datetime.now(tz=utc).isoformat(),
                 "left_at": None
             }
             added += 1
