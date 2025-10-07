@@ -143,6 +143,7 @@ async def on_ready():
 async def ping(interaction: discord.Interaction):
     await interaction.response.send_message(f' Pong! {round (bot.latency * 1000)} ms', ephemeral=True)
 
+'''        PREVIOUS POINTS COMMAND SYSTEM
 # Code for /points_check
 @bot.tree.command(name="points_check", description="Check your or another user's points")
 @app_commands.describe(user="The user to check (optional)")
@@ -164,6 +165,33 @@ async def points_add(interaction: discord.Interaction, user: discord.User, amoun
 
     add_points(user.id, amount)
     await interaction.response.send_message(f"Added **{amount}** points to **{user.display_name}**!")
+'''
+
+# Creates points command group
+points_group = app_commands.Group(name="points")
+
+# /points check command
+@points_group.command(name="check", description="Check the points of you or another member")
+@app_commands.describe(user="User to check (optional)")
+async def check(interaction: discord.Interaction, user: discord.User = None):
+    target = user or interaction.user
+    points = get_points(target.id)
+    if points >= 1000:
+        await interaction.response.send_message(f"🤑**{target.display_name}** has **{points}** points.")
+    elif points == 100:
+        await interaction.response.send_message(f"💯**{target.display_name}** has **{points}** points.")
+    else:
+        await interaction.response.send_message(f"**{target.display_name}** has **{points}** points.")
+
+# /points add command
+@points_group.command(name="add", description="Add points to a user")
+@app_commands.describe(user="User to add points to", amount="How many points to add")
+async def add(interaction: discord.Interaction, user: discord.User, amount: int):
+    add_points(user.id, amount)
+    await interaction.response.send_message(f"Added **{amount}** points to **{user.display_name}**!")
+
+# Register the group
+bot.tree.add_command(points_group)
 
 
 
