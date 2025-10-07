@@ -58,7 +58,7 @@ def add_points(user_id: int, amount: int):        # Defines the add points funct
 
 def set_points(user_id: int, amount: int):        # Defines the set points function
     data = load_points()
-    user_id_str = str(user.id)
+    user_id_str = str(user_id)
     
     if user_id_str not in data:
         data[user_id_str] = {"points": 0, "left_at": None}
