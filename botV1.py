@@ -215,11 +215,11 @@ async def set(interaction: discord.Interaction, user: discord.User, amount: int)
 @log_group.command(name="patrol", description="Log the points for someone attending/hosting a **Patrol**")
 @app_commands.describe(user="User who attended/hosted the event", type="How did they attend the event? (Attending, Hosting or Co-hosting)")
 @app_commands.choices(type=[
-    app_commands.choice(name="Attending", value="attending"),
-    app_commands.choice(name="Co Hosting", value="cohosting"),
-    app_commands.choice(name="Hosting", value="hosting")])
+    app_commands.Choice(name="Attending", value="attending"),
+    app_commands.Choice(name="Co Hosting", value="cohosting"),
+    app_commands.Choice(name="Hosting", value="hosting")])
 async def patrol(interaction: discord.Interaction, user: discord.User, type: app_commands.Choice[str]):
-    type: app_commands.choice[str]
+    type: app_commands.Choice[str]
     if type == attending:
         added = get_value(type=patrol)
         add_points(user.id, added)
