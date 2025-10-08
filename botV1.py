@@ -265,7 +265,7 @@ async def patrol(interaction: discord.Interaction, user: discord.User, type: app
         added += get_value("booster")
 
     add_points(user.id, added)
-    await interaction.response.send_message(f
+    await interaction.response.send_message(
         f"Added **{added}** points to **{user.display_name}** for {type.name} a **patrol**\n"
         f"They now have **{get_points(user.id)}** points."
     )
