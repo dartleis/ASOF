@@ -219,7 +219,7 @@ async def set(interaction: discord.Interaction, user: discord.User, amount: int)
     app_commands.choice(name="Co Hosting", value="cohosting"),
     app_commands.choice(name="Hosting", value="hosting")])
 async def patrol(interaction: discord.Interaction, user: discord.User, type: app_commands.Choice[str]):
-    type: app_commands.choice[str],
+    type: app_commands.choice[str]
         if type == attending:
             added = get_value(type=patrol)
             add_points(user.id, added)
