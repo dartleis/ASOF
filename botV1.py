@@ -220,15 +220,15 @@ async def set(interaction: discord.Interaction, user: discord.User, amount: int)
     app_commands.choice(name="Hosting", value="hosting")])
 async def patrol(interaction: discord.Interaction, user: discord.User, type: app_commands.Choice[str]):
     type: app_commands.choice[str]
-        if type == attending:
-            added = get_value(type=patrol)
-            add_points(user.id, added)
-        elif type == cohosting:
-            added = sum(get_value(type=patrol), get_value(type=cohosting))
-            add_points(user.id, added)
-        elif type == hosting:
-            added = sum(get_value(type=patrol), get_value(type=hosting))
-            add_points(user.id, added)
+    if type == attending:
+        added = get_value(type=patrol)
+        add_points(user.id, added)
+    elif type == cohosting:
+        added = sum(get_value(type=patrol), get_value(type=cohosting))
+        add_points(user.id, added)
+    elif type == hosting:
+        added = sum(get_value(type=patrol), get_value(type=hosting))
+        add_points(user.id, added)
     await interaction.response.send_message(f"Added {added} points to {user} for **{type}** a **patrol**. They now have **{get_points(user.id)}** points")
 
 with open("token.txt", "r") as file:        # Imports the Discord bot token from a secure external file
