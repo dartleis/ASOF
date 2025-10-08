@@ -264,7 +264,7 @@ async def patrol(interaction: discord.Interaction, user: discord.User, type: app
     if discord.utils.get(interaction.user.roles, id=booster_id):        # Checks if the user is a booster
         booster_bonus = get_value("booster")
         added += booster_bonus
-    else
+    else:
         booster_bonus = 0
 
     # Add total points
