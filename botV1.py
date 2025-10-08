@@ -10,6 +10,10 @@ VALUES_FILE = "values.json"        # Defines the values file as values.json
 JSON_CLEANUP_INTERVAL = 12        # How often to check if members have left the server, in hours
 REMOVE_AFTER_DAYS = 30        # How long to wait after a member has left the server to remove them from the points file, in days
 
+# Defines ids for roles
+booster_id = 1385279332049485935
+logistics_id = 1383446002182262856
+
 def load_points():  
     if not os.path.exists(POINTS_FILE):
         with open(POINTS_FILE, "w") as f:
@@ -24,7 +28,30 @@ def save_points(data):
 def load_values():
     if not os.path.exists(VALUES_FILE):
         with open(VALUES_FILE, "w") as f:
-            json.dump({"ad": 0, "adX3": 0, "recruitment": 0, "recruitmentsession": 0, "rally": 0, "rallyX5": 0, "patrol": 0, "gamenight": 0, "training": 0, "raid": 0, "hosting": 0, "cohosting": 0, "booster": 0, "jointevent": 0, "eventlogging": 0, "contractpayment": 0, "nameplate": 0, "basecommander": 0, "bank": 0, "goldbar": 0, "trainee": 0, "visitortransport": 0, "pizzadelivery": 0}, f, indent=4) 
+            json.dump(
+                {"ad": 0,
+                 "adX3": 0,
+                 "recruitment": 0,
+                 "recruitmentsession": 0,
+                 "rally": 0,
+                 "rallyX5": 0,
+                 "patrol": 0,
+                 "gamenight": 0,
+                 "training": 0,
+                 "raid": 0,
+                 "hosting": 0,
+                 "cohosting": 0,
+                 "booster": 0,
+                 "jointevent": 0,
+                 "eventlogging": 0,
+                 "contractpayment": 0,
+                 "nameplate": 0,
+                 "basecommander": 0,
+                 "bank": 0,
+                 "goldbar": 0,
+                 "trainee": 0,
+                 "visitortransport": 0,
+                 "pizzadelivery": 0}, f, indent=4) 
     with open(VALUES_FILE, "r") as f:
         return json.load(f)
 
@@ -230,15 +257,31 @@ async def patrol(interaction: discord.Interaction, user: discord.User, type: app
     elif type.value == "hosting":
         added = get_value("patrol") + get_value("hosting")
     else:
-        await interaction.response.send_message("❌ Invalid type.", ephemeral=True)
+        added = 0
+        await interaction.response.send_message("how did you get here?")
         return
+    
+    if discord.utils.get(interaction.user.roles, id=booster_id):        # Checks if that user is a server booster
+        added += get_value("booster")
 
     add_points(user.id, added)
-    await interaction.response.send_message(
-        f"✅ Added **{added}** points to **{user.display_name}** for **{type.name}** a patrol.\n"
+    await interaction.response.send_message(f
+        f"Added **{added}** points to **{user.display_name}** for {type.name} a **patrol**\n"
         f"They now have **{get_points(user.id)}** points."
     )
 
+# /log recruitment command
+@log_group.command(name="recruitment", description="Log the points for someone recruiting a member in the Discord")
+@app_commands.describe(user="User who recruited someone", amount="How many people were recruited")
+async def recruitment(interaction: discord.Interaction, user: discord.User, amount: int):
+    added = get_value("recruitment") * amount
+    add_points(user.id, added)
+    await interaction.send_message(
+        f"Added **{added}** points to **{user.display_name}** for **recruiting** **{amount}** members.\n"
+        f" They now have **{get_points(user.id)}** points."
+    )
+
+# Runs the bot with the bot token
 with open("token.txt", "r") as file:        # Imports the Discord bot token from a secure external file
     token = file.read().strip()
 
