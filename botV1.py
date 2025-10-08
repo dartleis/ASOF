@@ -261,14 +261,24 @@ async def patrol(interaction: discord.Interaction, user: discord.User, type: app
         await interaction.response.send_message("how did you get here?")
         return
     
-    if discord.utils.get(interaction.user.roles, id=booster_id):        # Checks if that user is a server booster
-        added += get_value("booster")
+    if discord.utils.get(interaction.user.roles, id=booster_id):        # Checks if the user is a booster
+        booster_bonus = get_value("booster")
+        added += booster_bonus
+    else
+        booster_bonus = 0
 
+    # Add total points
     add_points(user.id, added)
-    await interaction.response.send_message(
-        f"Added **{added}** points to **{user.display_name}** for {type.name} a **patrol**\n"
-        f"They now have **{get_points(user.id)}** points."
-    )
+
+    msg = (f"✅ Added **{added}** points to **{user.display_name}** for {type.name.lower()} a **patrol**.")
+
+    if booster_bonus > 0:
+        msg += f"\n💎 **{interaction.user.display_name}** received an extra **{booster_bonus}** points for being a **server booster**!"
+
+    msg += f"They now have **{get_points(user.id)}** points."
+
+    await interaction.response.send_message(msg)
+
 
 # /log recruitment command
 @log_group.command(name="recruitment", description="Log the points for someone recruiting a member in the Discord")
