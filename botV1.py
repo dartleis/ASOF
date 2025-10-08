@@ -272,8 +272,8 @@ async def patrol(interaction: discord.Interaction, user: discord.User, type: app
 
 # /log recruitment command
 @log_group.command(name="recruitment", description="Log the points for someone recruiting a member in the Discord")
-@app_commands.describe(user="User who recruited someone", amount="How many people were recruited")
-async def recruitment(interaction: discord.Interaction, user: discord.User, amount: int):
+@app_commands.describe(user="User who recruited someone", amount="How many people were recruited (Optional)")
+async def recruitment(interaction: discord.Interaction, user: discord.User, amount: int = 1):
     added = get_value("recruitment") * amount
     add_points(user.id, added)
     await interaction.response.send_message(
