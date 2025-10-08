@@ -77,9 +77,9 @@ def set_values(type: str, value: float):
     data[type.replace(" ", "")] = value
     save_values(data)
 
-def get_value(type: str, value: float):
+def get_value(key: str):
     data = load_values()
-    return data.get(type, {}).get("value", 0)
+    return data.get(key, 0)
 
 # Create a bot instance
 intents = discord.Intents.default()
@@ -212,24 +212,32 @@ async def set(interaction: discord.Interaction, user: discord.User, amount: int)
     await interaction.response.send_message(f"Set the points of **{user.display_name}** to **{amount}**")
 
 # /log patrol command    (to be improved with selection for host, cohost, all attendees etc, allowing one event to be logged with just one command)
-@log_group.command(name="patrol", description="Log the points for someone attending/hosting a **Patrol**")
-@app_commands.describe(user="User who attended/hosted the event", type="How did they attend the event? (Attending, Hosting or Co-hosting)")
+@log_group.command(name="patrol", description="Log the points for someone attending/hosting a Patrol")
+@app_commands.describe(
+    user="User who attended/hosted the event",
+    type="How did they attend the event? (Attending, Hosting or Co-hosting)"
+)
 @app_commands.choices(type=[
     app_commands.Choice(name="Attending", value="attending"),
     app_commands.Choice(name="Co Hosting", value="cohosting"),
-    app_commands.Choice(name="Hosting", value="hosting")])
+    app_commands.Choice(name="Hosting", value="hosting")
+])
 async def patrol(interaction: discord.Interaction, user: discord.User, type: app_commands.Choice[str]):
-    type: app_commands.Choice[str]
-    if type == attending:
-        added = get_value(type=patrol)
-        add_points(user.id, added)
-    elif type == cohosting:
-        added = sum(get_value(type=patrol), get_value(type=cohosting))
-        add_points(user.id, added)
-    elif type == hosting:
-        added = sum(get_value(type=patrol), get_value(type=hosting))
-        add_points(user.id, added)
-    await interaction.response.send_message(f"Added {added} points to {user} for **{type}** a **patrol**. They now have **{get_points(user.id)}** points")
+    if type.value == "attending":
+        added = get_value("patrol")
+    elif type.value == "cohosting":
+        added = get_value("patrol") + get_value("cohosting")
+    elif type.value == "hosting":
+        added = get_value("patrol") + get_value("hosting")
+    else:
+        await interaction.response.send_message("❌ Invalid type.", ephemeral=True)
+        return
+
+    add_points(user.id, added)
+    await interaction.response.send_message(
+        f"✅ Added **{added}** points to **{user.display_name}** for **{type.name}** a patrol.\n"
+        f"They now have **{get_points(user.id)}** points."
+    )
 
 with open("token.txt", "r") as file:        # Imports the Discord bot token from a secure external file
     token = file.read().strip()
