@@ -275,7 +275,7 @@ async def patrol(interaction: discord.Interaction, user: discord.User, type: app
     if booster_bonus > 0:
         msg += f"\n💎 **{interaction.user.display_name}** received an extra **{booster_bonus}** points for being a **server booster**!"
 
-    msg += f"They now have **{get_points(user.id)}** points."
+    msg += f"\nThey now have **{get_points(user.id)}** points."
 
     await interaction.response.send_message(msg)
 
