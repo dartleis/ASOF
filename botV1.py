@@ -2,12 +2,11 @@
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
-import json
-import os
-import asyncio
+import json, os, asyncio
 from datetime import datetime, timedelta
 
 POINTS_FILE = "points.json"        # Defines the points file as points.json
+VALUES_FILE = "values.json"        # Defines the values file as values.json
 JSON_CLEANUP_INTERVAL = 12        # How often to check if members have left the server, in hours
 REMOVE_AFTER_DAYS = 30        # How long to wait after a member has left the server to remove them from the points file, in days
 
@@ -20,6 +19,17 @@ def load_points():
 
 def save_points(data):      
     with open(POINTS_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+def load_values():
+    if not os.path.exists(VALUES_FILE):
+        with open(VALUES_FILE, "w") as f:
+            json.dump({"ad": 0, "adX3": 0, "recruitment": 0, "recruitmentsession": 0, "rally": 0, "rallyX5": 0, "patrol": 0, "gamenight": 0, "training": 0, "raid": 0, "hosting": 0, "cohosting": 0, "booster": 0, "jointevent": 0, "eventlogging": 0, "contractpayment": 0, "nameplate": 0, "basecommander": 0, "bank": 0, "goldbar": 0, "trainee": 0, "visitortransport": 0, "pizzadelivery": 0}, f, indent=4) 
+    with open(VALUES_FILE, "r") as f:
+        return json.load(f)
+
+def save_values(data):
+    with open(VALUES_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
 def manual_cleanup_inactive_users():
@@ -62,6 +72,15 @@ def set_points(user_id: int, amount: int):
     data[user_id_str] ["points"] = amount
     save_points(data)
 
+def set_values(type: str, value: float):
+    data = load_values()
+    data[type.replace(" ", "")] = value
+    save_values(data)
+
+def get_value(type: str, value: float):
+    data = load_values()
+    return data.get(type, {}).get("value", 0)
+
 # Create a bot instance
 intents = discord.Intents.default()
 intents.message_content = True        # Allow the bot to read message content
@@ -69,7 +88,11 @@ intents.members = True        # Allows the bot to track who is in the server
 intents.guilds = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 points_group = app_commands.Group(name="points", description="EXP system")
+log_group = app_commands.Group(name="log", description="Used for logging things like events, ads, etc")
+leaderboard_group = app_commands.Group(name="leaderboard", description="Used by Leaderboard Officers to efficiently log points for leaderboard activity completions")
 bot.tree.add_command(points_group)
+bot.tree.add_command(log_group)
+bot.tree.add_command(leaderboard_group)
 
 
 # Adds new members to points.json
@@ -126,7 +149,7 @@ async def add_all_members(guild):
             }
             added += 1
 
-        await asyncio.sleep(0.1)  # Adds a small delay when adding members to prevent hitting Discord rate limits. 0.1 = 10 members per second
+        await asyncio.sleep(0.1)  # Adds a small delay when adding members to prevent hitting Discord rate limits, in seconds. 0.1 = 10 members per second
         print(f"Added {member.name} to points.json")
 
     save_points(points_data)
@@ -187,6 +210,26 @@ async def subtract(interaction: discord.Interaction, user: discord.User, amount:
 async def set(interaction: discord.Interaction, user: discord.User, amount: int):
     set_points(user.id, amount)
     await interaction.response.send_message(f"Set the points of **{user.display_name}** to **{amount}**")
+
+# /log patrol command    (to be improved with selection for host, cohost, all attendees etc, allowing one event to be logged with just one command)
+@log_group.command(name="patrol", description="Log the points for someone attending/hosting a **Patrol**")
+@app_commands.describe(user="User who attended/hosted the event", type="How did they attend the event? (Attending, Hosting or Co-hosting)")
+@app_commands.choices(type=[
+    app_commands.choice(name="Attending", value="attending"),
+    app_commands.choice(name="Co Hosting", value="cohosting"),
+    app_commands.choice(name="Hosting", value="hosting")])
+async def patrol(interaction: discord.Interaction, user: discord.User, type: app_commands.Choice[str]):
+    type: app_commands.choice[str],
+        if type == attending:
+            added = get_value(type=patrol)
+            add_points(user.id, added)
+        elif type == cohosting:
+            added = sum(get_value(type=patrol), get_value(type=cohosting))
+            add_points(user.id, added)
+        elif type == hosting:
+            added = sum(get_value(type=patrol), get_value(type=hosting))
+            add_points(user.id, added)
+    await interaction.response.send_message(f"Added {added} points to {user} for **{type}** a **patrol**. They now have **{get_points(user.id)}** points")
 
 with open("token.txt", "r") as file:        # Imports the Discord bot token from a secure external file
     token = file.read().strip()
