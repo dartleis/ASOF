@@ -54,7 +54,7 @@ def load_values():
                  "goldbar": 0,
                  "trainee": 0,
                  "visitortransport": 0,
-                 "pizzadelivery": 0}, f, indent=4) n
+                 "pizzadelivery": 0}, f, indent=4)
     with open(VALUES_FILE, "r") as f:
         return json.load(f)
 
