@@ -295,7 +295,7 @@ async def set(interaction: discord.Interaction, user: discord.User, amount: int)
 async def patrol(interaction: discord.Interaction, user: discord.User, event_type: app_commands.Choice[str], attendance_type: app_commands.Choice[str]): 
     if attendance_type.value == "attending":
         added = get_value(event_type.value)
-    else attendance_type.value == "cohosting":
+    else:
         added = get_value(event_type.value) + get_value(attendance_type.value)
     
     member = interaction.guild.get_member(user.id)
