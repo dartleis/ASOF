@@ -314,7 +314,7 @@ async def set(interaction: discord.Interaction, user: discord.User, amount: floa
     app_commands.Choice(name="Co Hosting", value="cohosting"),
     app_commands.Choice(name="Hosting", value="hosting")
 ])
-async def patrol(interaction: discord.Interaction, user: discord.User, event_type: app_commands.Choice[str], attendance_type: app_commands.Choice[str]): 
+async def event(interaction: discord.Interaction, user: discord.User, event_type: app_commands.Choice[str], attendance_type: app_commands.Choice[str]): 
     if attendance_type.value == "attending":
         added = get_value(event_type.value)
     else:
@@ -348,6 +348,24 @@ async def recruitment(interaction: discord.Interaction, user: discord.User, amou
     await interaction.response.send_message(
         f"Added **{added}** points to **{user.display_name}** for **recruiting** **{amount}** members.\n"
         f" They now have **{get_points(user.id)}** points."
+    )
+
+# /log rally command
+@log_group.command(name="rally", description="Log the points for someone attending the weekly rally")
+@app_commands.describe(user="User who attended the rally", amount_attendees="Amount of total attendees were at the rally", rally="Which rally was attended")
+@app_commands.choices(rally=[
+    app_commands.Choice(name="1 AM rally", value="1am"),
+    app_commands.Choice(name="1 PM rally", value="1pm")])
+async def rally(interaction:discord.Interaction, user: discord.User, amount_attendees: int, rally: app_commands.Choice[str]):
+    amount_attendees = abs(amount_attendees)
+    if amount_attendees >= 5:
+        added = get_value("rallyX5")
+    else:
+        added = get_value("rally")
+    add_points(user.id, added)
+    await interaction.response.send_message(
+        f"Added **{added}** points to **{user.display_name}** for representing ASOF at the **{rally.name}** with {str(amount_attendees - 1).replace("-1", "0")} others"
+        f"\nThey now have **{get_points(user.id)}** points"
     )
 
 # Runs the bot with the bot token
