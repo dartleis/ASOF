@@ -18,14 +18,26 @@ logistics_id = 1353100755338530889    # test id
 contractofficer_id = 1353100755338530889    #test id
 #contractofficer_id = 1406564078666649660
 
-def load_points():  
+def tidy_number(num):        # Automatically cleans up numbers ending in .0 by converting them to integers
+    if isinstance(num, float) and num.is_integer():
+        return int(num)
+    return num
+
+def load_points():
     if not os.path.exists(POINTS_FILE):
         with open(POINTS_FILE, "w") as f:
             json.dump({}, f)
     with open(POINTS_FILE, "r") as f:
-        return json.load(f)
+        data = json.load(f)
+    
+    for user_id, info in data.items():
+        info["points"] = tidy_number(info.get("points", 0))
+    
+    return data
 
-def save_points(data):      
+def save_points(data):
+    for user_id, info in data.items():
+        info["points"] = tidy_number(info.get("points", 0))
     with open(POINTS_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
@@ -57,9 +69,16 @@ def load_values():
                  "visitortransport": 0,
                  "pizzadelivery": 0}, f, indent=4)
     with open(VALUES_FILE, "r") as f:
-        return json.load(f)
+        data = json.load(f)
+    
+    for key in data:
+        data[key] = tidy_number(data[key])
+    
+    return data
 
 def save_values(data):
+    for key in data:
+        data[key] = tidy_number(data[key])
     with open(VALUES_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
@@ -255,25 +274,28 @@ async def check(interaction: discord.Interaction, user: discord.User = None):
 # /points add command
 @points_group.command(name="add", description="Add points to a user")
 @app_commands.describe(user="User to add points to", amount="How many points to add")
-async def add(interaction: discord.Interaction, user: discord.User, amount: int):
+async def add(interaction: discord.Interaction, user: discord.User, amount: float):
     add_points(user.id, amount)
+    amount = tidy_number(amount)
     await interaction.response.send_message(f"Added **{amount}** points to **{user.display_name}**, bringing their total to **{get_points(user.id)}**.")
-
+    
 # /points subtract command
 @points_group.command(name="subtract", description="Remove points from a user")
 @app_commands.describe(user="User to remove points from", amount="How many points to remove")
-async def subtract(interaction: discord.Interaction, user: discord.User, amount: int):
+async def subtract(interaction: discord.Interaction, user: discord.User, amount: float):
     add_points(user.id, -abs(amount))
+    amount = tidy_number(amount)
     await interaction.response.send_message(f"Removed **{abs(amount)}** points from **{user.display_name}**, bringing their total to **{get_points(user.id)}**.")
 
 # /points set command
 @points_group.command(name="set", description="Set the points of a user")
 @app_commands.describe(user="User to set the points of", amount="Amount of points to set")
-async def set(interaction: discord.Interaction, user: discord.User, amount: int):
+async def set(interaction: discord.Interaction, user: discord.User, amount: float):
     set_points(user.id, amount)
+    amount = tidy_number(amount)
     await interaction.response.send_message(f"Set the points of **{user.display_name}** to **{amount}**")
 
-# /log event (WIP)
+# /log event
 @log_group.command(name="event", description="Log the points for someone attending/hosting an event")
 @app_commands.describe(
     user="User who attended/hosted the event",
@@ -307,10 +329,10 @@ async def patrol(interaction: discord.Interaction, user: discord.User, event_typ
    
     add_points(user.id, added)
 
-    msg = (f"Added **{added}** points to **{user.display_name}** for {attendance_type.name.lower()} a **{event_type.name}**.")
+    msg = (f"Added **{added}** points to **{user.display_name}** for {attendance_type.name.lower().replace(" ", "-")} a **{event_type.name}**.")
 
     if booster_bonus > 0:
-        msg += f"\n💎 **{user.display_name}** received an extra **{booster_bonus}** points for being a **server booster**!"
+        msg += f"\n💎 **{user.display_name}** received an extra **{booster_bonus}** points for being a **<:booster_icon:1425732545986822164> Server Booster**!"
 
     msg += f"\nThey now have **{get_points(user.id)}** points."
 
