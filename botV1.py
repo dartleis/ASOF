@@ -208,7 +208,7 @@ async def ping(interaction: discord.Interaction):
     await interaction.response.send_message(f' Pong! {round (bot.latency * 1000)} ms', ephemeral=True)
 
 # Code for /config
-@bot.tree.command(name="config", decription="configures the points values of different actions")
+@bot.tree.command(name="config", description="configures the points values of different actions")
 @bot.tree.describe(type="What action to edit the values for", value="What to set the value to")
 @app_commands.choices(type=[
     app_commands.Choice(name="ad", value="ad"),
