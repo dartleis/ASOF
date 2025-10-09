@@ -235,8 +235,8 @@ async def ping(interaction: discord.Interaction):
     app_commands.Choice(name="leaderboard visitor transported", value="visitortransport"),
     app_commands.Choice(name="leaderboard pizza delivered", value="pizzadelivery")])
 async def config(interaction: discord.Interaction, type: app_commands.Choice[str], value: float):
-    
-    
+    set_values(type.value, value)
+    await interaction.response.send_messange(f"Set value of **{type.value}** to **{get_value(type.value)}**")
 
 # /points check command
 @points_group.command(name="check", description="Check the points of you or another member")
