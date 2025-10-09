@@ -311,7 +311,7 @@ if member and discord.utils.get(member.roles, id=booster_id):
 
     msg += f"\nThey now have **{get_points(user.id)}** points."
 
-    await interaction.response.send_message(msg)
+await interaction.response.send_message(msg)
 
 
 # /log recruitment command
