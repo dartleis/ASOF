@@ -11,11 +11,12 @@ JSON_CLEANUP_INTERVAL = 12        # How often to check if members have left the 
 REMOVE_AFTER_DAYS = 30        # How long to wait after a member has left the server to remove them from the points file, in days
 
 # Defines ids for roles
-booster_id = 1385279332049485935
-logistics_id = 1383446002182262856
-
-def ligma():
-    print("no")
+booster_id = 1353100755338530889    # test id, does not correlate to ASOF server role ids
+#booster_id = 1385279332049485935
+logistics_id = 1353100755338530889    # test id
+#logistics_id = 1383446002182262856
+contractofficer_id = 1353100755338530889    #test id
+#contractofficer_id = 1406564078666649660
 
 def load_points():  
     if not os.path.exists(POINTS_FILE):
@@ -295,12 +296,12 @@ async def patrol(interaction: discord.Interaction, user: discord.User, type: app
         await interaction.response.send_message("how did you get here?")
         return
     
-member = interaction.guild.get_member(user.id)
+    member = interaction.guild.get_member(user.id)
 
-booster_bonus = 0
-if member and discord.utils.get(member.roles, id=booster_id):
-    booster_bonus = get_value("booster")
-    added += booster_bonus
+    booster_bonus = 0
+    if member and discord.utils.get(member.roles, id=booster_id):
+        booster_bonus = get_value("booster")
+        added += booster_bonus
    
     add_points(user.id, added)
 
@@ -311,7 +312,7 @@ if member and discord.utils.get(member.roles, id=booster_id):
 
     msg += f"\nThey now have **{get_points(user.id)}** points."
 
-await interaction.response.send_message(msg)
+    await interaction.response.send_message(msg)
 
 
 # /log recruitment command
