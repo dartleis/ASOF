@@ -18,7 +18,7 @@ logistics_id = 1353100755338530889    # test id
 contractofficer_id = 1353100755338530889    #test id
 #contractofficer_id = 1406564078666649660
 
-def tidy_number(num):        # Automatically cleans up numbers ending in .0 by converting them to integers
+def tidy_number(num):        # Automatically cleans up numbers ending in .0
     if isinstance(num, float) and num.is_integer():
         return int(num)
     return num
@@ -332,7 +332,7 @@ async def patrol(interaction: discord.Interaction, user: discord.User, event_typ
     msg = (f"Added **{added}** points to **{user.display_name}** for {attendance_type.name.lower().replace(" ", "-")} a **{event_type.name}**.")
 
     if booster_bonus > 0:
-        msg += f"\n💎 **{user.display_name}** received an extra **{booster_bonus}** points for being a **<:booster_icon:1425732545986822164> Server Booster**!"
+        msg += f"\n<:booster_icon:1425732545986822164> That includes an extra **{booster_bonus}** points for being a **Server Booster**! Thank you for supporting the division!"
 
     msg += f"\nThey now have **{get_points(user.id)}** points."
 
