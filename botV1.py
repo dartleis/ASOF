@@ -295,19 +295,19 @@ async def patrol(interaction: discord.Interaction, user: discord.User, type: app
         await interaction.response.send_message("how did you get here?")
         return
     
-    if discord.utils.get(interaction.user.roles, id=booster_id):        # Checks if the user is a booster
-        booster_bonus = get_value("booster")
-        added += booster_bonus
-    else:
-        booster_bonus = 0
+member = interaction.guild.get_member(user.id)
 
-    # Add total points
+booster_bonus = 0
+if member and discord.utils.get(member.roles, id=booster_id):
+    booster_bonus = get_value("booster")
+    added += booster_bonus
+   
     add_points(user.id, added)
 
     msg = (f"✅ Added **{added}** points to **{user.display_name}** for {type.name.lower()} a **patrol**.")
 
     if booster_bonus > 0:
-        msg += f"\n💎 **{interaction.user.display_name}** received an extra **{booster_bonus}** points for being a **server booster**!"
+        msg += f"\n💎 **{user.display_name}** received an extra **{booster_bonus}** points for being a **server booster**!"
 
     msg += f"\nThey now have **{get_points(user.id)}** points."
 
