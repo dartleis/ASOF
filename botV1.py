@@ -2,14 +2,21 @@
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
-import json
-import os
-import asyncio
+import json, os, asyncio
 from datetime import datetime, timedelta
 
 POINTS_FILE = "points.json"        # Defines the points file as points.json
+VALUES_FILE = "values.json"        # Defines the values file as values.json
 JSON_CLEANUP_INTERVAL = 12        # How often to check if members have left the server, in hours
 REMOVE_AFTER_DAYS = 30        # How long to wait after a member has left the server to remove them from the points file, in days
+
+# Defines ids for roles
+booster_id = 1353100755338530889    # test id, does not correlate to ASOF server role ids
+#booster_id = 1385279332049485935
+logistics_id = 1353100755338530889    # test id
+#logistics_id = 1383446002182262856
+contractofficer_id = 1353100755338530889    #test id
+#contractofficer_id = 1406564078666649660
 
 def load_points():  
     if not os.path.exists(POINTS_FILE):
@@ -20,6 +27,40 @@ def load_points():
 
 def save_points(data):      
     with open(POINTS_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+def load_values():
+    if not os.path.exists(VALUES_FILE):
+        with open(VALUES_FILE, "w") as f:
+            json.dump(
+                {"ad": 0,
+                 "adX3": 0,
+                 "recruitment": 0,
+                 "recruitmentsession": 0,
+                 "rally": 0,
+                 "rallyX5": 0,
+                 "patrol": 0,
+                 "gamenight": 0,
+                 "training": 0,
+                 "raid": 0,
+                 "hosting": 0,
+                 "cohosting": 0,
+                 "booster": 0,
+                 "joint": 0,
+                 "eventlogging": 0,
+                 "contractpayment": 0,
+                 "nameplate": 0,
+                 "basecommander": 0,
+                 "bank": 0,
+                 "goldbar": 0,
+                 "trainee": 0,
+                 "visitortransport": 0,
+                 "pizzadelivery": 0}, f, indent=4)
+    with open(VALUES_FILE, "r") as f:
+        return json.load(f)
+
+def save_values(data):
+    with open(VALUES_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
 def manual_cleanup_inactive_users():
@@ -35,7 +76,7 @@ def manual_cleanup_inactive_users():
                 del points_data[user_id]
 
     if removed:
-        print(f"🧹 Removed inactive users: {removed}")
+        print(f"Removed inactive users: {removed}")
         save_points(points_data)
 
 def get_points(user_id: int):        # Defines the get points function
@@ -62,6 +103,15 @@ def set_points(user_id: int, amount: int):
     data[user_id_str] ["points"] = amount
     save_points(data)
 
+def set_values(type: str, value: float):
+    data = load_values()
+    data[type.replace(" ", "")] = value
+    save_values(data)
+
+def get_value(key: str):
+    data = load_values()
+    return data.get(key, 0)
+
 # Create a bot instance
 intents = discord.Intents.default()
 intents.message_content = True        # Allow the bot to read message content
@@ -69,7 +119,11 @@ intents.members = True        # Allows the bot to track who is in the server
 intents.guilds = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 points_group = app_commands.Group(name="points", description="EXP system")
+log_group = app_commands.Group(name="log", description="Used for logging things like events, ads, etc")
+leaderboard_group = app_commands.Group(name="leaderboard", description="Used by Leaderboard Officers to efficiently log points for leaderboard activity completions")
 bot.tree.add_command(points_group)
+bot.tree.add_command(log_group)
+bot.tree.add_command(leaderboard_group)
 
 
 # Adds new members to points.json
@@ -126,7 +180,7 @@ async def add_all_members(guild):
             }
             added += 1
 
-        await asyncio.sleep(0.1)  # Adds a small delay when adding members to prevent hitting Discord rate limits. 0.1 = 10 members per second
+        await asyncio.sleep(0.1)  # Adds a small delay when adding members to prevent hitting Discord rate limits, in seconds. 0.1 = 10 members per second
         print(f"Added {member.name} to points.json")
 
     save_points(points_data)
@@ -153,6 +207,37 @@ async def on_ready():
 @bot.tree.command(name="ping", description="Gets the ping of the bot. Mainly used for debug purposes.")
 async def ping(interaction: discord.Interaction):
     await interaction.response.send_message(f' Pong! {round (bot.latency * 1000)} ms', ephemeral=True)
+
+# Code for /config
+@bot.tree.command(name="config", description="configures the points values of different actions")
+@app_commands.describe(type="What action to edit the values for", value="What to set the value to")
+@app_commands.choices(type=[
+    app_commands.Choice(name="ad", value="ad"),
+    app_commands.Choice(name="ad x3", value="adX3"),
+    app_commands.Choice(name="recruitment", value="recruitment"),
+    app_commands.Choice(name="recruitment session", value="recruitmentsession"),
+    app_commands.Choice(name="rally", value="rally"),
+    app_commands.Choice(name="rally with over 5 people", value="rallyX5"),
+    app_commands.Choice(name="patrol", value="patrol"),
+    app_commands.Choice(name="gamenight", value="gamenight"),
+    app_commands.Choice(name="training", value="training"),
+    app_commands.Choice(name="raid", value="raid"),
+    app_commands.Choice(name="event hosting", value="hosting"),
+    app_commands.Choice(name="event co-hosting", value="cohosting"),
+    app_commands.Choice(name="server booster event bonus", value="booster"),
+    app_commands.Choice(name="joint event with other divisions bonus", value="joint"),
+    app_commands.Choice(name="logistics event logging", value="eventlogging"),
+    app_commands.Choice(name="contract officer completed payment", value="contractpayment"),
+    app_commands.Choice(name="nameplate order completed", value="nameplate"),
+    app_commands.Choice(name="leaderboard base commander kill", value="basecommander"),
+    app_commands.Choice(name="leaderboard bank robbery completed", value="bank"),
+    app_commands.Choice(name="leaderboard gold bar stolen", value="goldbar"),
+    app_commands.Choice(name="leaderboard trainee trained", value="trainee"),
+    app_commands.Choice(name="leaderboard visitor transported", value="visitortransport"),
+    app_commands.Choice(name="leaderboard pizza delivered", value="pizzadelivery")])
+async def config(interaction: discord.Interaction, type: app_commands.Choice[str], value: float):
+    set_values(type.value, value)
+    await interaction.response.send_message(f"Set value of **{type.value}** to **{get_value(type.value)}**")
 
 # /points check command
 @points_group.command(name="check", description="Check the points of you or another member")
@@ -188,6 +273,60 @@ async def set(interaction: discord.Interaction, user: discord.User, amount: int)
     set_points(user.id, amount)
     await interaction.response.send_message(f"Set the points of **{user.display_name}** to **{amount}**")
 
+# /log patrol command    (to be improved with selection for host, cohost, all attendees etc, allowing one event to be logged with just one command)
+@log_group.command(name="patrol", description="Log the points for someone attending/hosting a Patrol")
+@app_commands.describe(
+    user="User who attended/hosted the event",
+    type="How did they attend the event? (Attending, Hosting or Co-hosting)"
+)
+@app_commands.choices(type=[
+    app_commands.Choice(name="Attending", value="attending"),
+    app_commands.Choice(name="Co Hosting", value="cohosting"),
+    app_commands.Choice(name="Hosting", value="hosting")
+])
+async def patrol(interaction: discord.Interaction, user: discord.User, type: app_commands.Choice[str]):
+    if type.value == "attending":
+        added = get_value("patrol")
+    elif type.value == "cohosting":
+        added = get_value("patrol") + get_value("cohosting")
+    elif type.value == "hosting":
+        added = get_value("patrol") + get_value("hosting")
+    else:
+        added = 0
+        await interaction.response.send_message("how did you get here?")
+        return
+    
+    member = interaction.guild.get_member(user.id)
+
+    booster_bonus = 0
+    if member and discord.utils.get(member.roles, id=booster_id):
+        booster_bonus = get_value("booster")
+        added += booster_bonus
+   
+    add_points(user.id, added)
+
+    msg = (f"✅ Added **{added}** points to **{user.display_name}** for {type.name.lower()} a **patrol**.")
+
+    if booster_bonus > 0:
+        msg += f"\n💎 **{user.display_name}** received an extra **{booster_bonus}** points for being a **server booster**!"
+
+    msg += f"\nThey now have **{get_points(user.id)}** points."
+
+    await interaction.response.send_message(msg)
+
+
+# /log recruitment command
+@log_group.command(name="recruitment", description="Log the points for someone recruiting a member in the Discord")
+@app_commands.describe(user="User who recruited someone", amount="How many people were recruited (Optional)")
+async def recruitment(interaction: discord.Interaction, user: discord.User, amount: int = 1):
+    added = get_value("recruitment") * amount
+    add_points(user.id, added)
+    await interaction.response.send_message(
+        f"Added **{added}** points to **{user.display_name}** for **recruiting** **{amount}** members.\n"
+        f" They now have **{get_points(user.id)}** points."
+    )
+
+# Runs the bot with the bot token
 with open("token.txt", "r") as file:        # Imports the Discord bot token from a secure external file
     token = file.read().strip()
 
