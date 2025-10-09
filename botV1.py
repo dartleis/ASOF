@@ -273,28 +273,30 @@ async def set(interaction: discord.Interaction, user: discord.User, amount: int)
     set_points(user.id, amount)
     await interaction.response.send_message(f"Set the points of **{user.display_name}** to **{amount}**")
 
-# /log patrol command    (to be improved with selection for host, cohost, all attendees etc, allowing one event to be logged with just one command)
-@log_group.command(name="patrol", description="Log the points for someone attending/hosting a Patrol")
+# /log event (WIP)
+@log_group.command(name="event", description="Log the points for someone attending/hosting an event")
 @app_commands.describe(
     user="User who attended/hosted the event",
-    type="How did they attend the event? (Attending, Hosting or Co-hosting)"
+    event_type="What type of event",
+    attendance_type="How did they attend the event? (Attending, Hosting or Co-hosting)"
 )
-@app_commands.choices(type=[
+@app_commands.choices(event_type=[
+    app_commands.Choice(name="Patrol", value="patrol"),
+    app_commands.Choice(name="Gamenight", value="gamenight"),
+    app_commands.Choice(name="Training", value="training"),
+    app_commands.Choice(name="Raid", value="raid"),
+    app_commands.Choice(name="Recruitment Session", value="recruitmentsession")
+])
+@app_commands.choices(attendance_type=[
     app_commands.Choice(name="Attending", value="attending"),
     app_commands.Choice(name="Co Hosting", value="cohosting"),
     app_commands.Choice(name="Hosting", value="hosting")
 ])
-async def patrol(interaction: discord.Interaction, user: discord.User, type: app_commands.Choice[str]):
-    if type.value == "attending":
-        added = get_value("patrol")
-    elif type.value == "cohosting":
-        added = get_value("patrol") + get_value("cohosting")
-    elif type.value == "hosting":
-        added = get_value("patrol") + get_value("hosting")
-    else:
-        added = 0
-        await interaction.response.send_message("how did you get here?")
-        return
+async def patrol(interaction: discord.Interaction, user: discord.User, event_type: app_commands.Choice[str], attendance_type: app_commands.Choice[str]): 
+    if attendance_type.value == "attending":
+        added = get_value(event_type.value)
+    else attendance_type.value == "cohosting":
+        added = get_value(event_type.value) + get_value(attendance_type.value)
     
     member = interaction.guild.get_member(user.id)
 
@@ -305,7 +307,7 @@ async def patrol(interaction: discord.Interaction, user: discord.User, type: app
    
     add_points(user.id, added)
 
-    msg = (f"✅ Added **{added}** points to **{user.display_name}** for {type.name.lower()} a **patrol**.")
+    msg = (f"Added **{added}** points to **{user.display_name}** for {attendance_type.name.lower()} a **{event_type.name}**.")
 
     if booster_bonus > 0:
         msg += f"\n💎 **{user.display_name}** received an extra **{booster_bonus}** points for being a **server booster**!"
