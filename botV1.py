@@ -14,6 +14,9 @@ REMOVE_AFTER_DAYS = 30        # How long to wait after a member has left the ser
 booster_id = 1385279332049485935
 logistics_id = 1383446002182262856
 
+def ligma():
+    print("no")
+
 def load_points():  
     if not os.path.exists(POINTS_FILE):
         with open(POINTS_FILE, "w") as f:
@@ -42,7 +45,7 @@ def load_values():
                  "hosting": 0,
                  "cohosting": 0,
                  "booster": 0,
-                 "jointevent": 0,
+                 "joint": 0,
                  "eventlogging": 0,
                  "contractpayment": 0,
                  "nameplate": 0,
@@ -51,7 +54,7 @@ def load_values():
                  "goldbar": 0,
                  "trainee": 0,
                  "visitortransport": 0,
-                 "pizzadelivery": 0}, f, indent=4) 
+                 "pizzadelivery": 0}, f, indent=4) n
     with open(VALUES_FILE, "r") as f:
         return json.load(f)
 
@@ -72,7 +75,7 @@ def manual_cleanup_inactive_users():
                 del points_data[user_id]
 
     if removed:
-        print(f"🧹 Removed inactive users: {removed}")
+        print(f"Removed inactive users: {removed}")
         save_points(points_data)
 
 def get_points(user_id: int):        # Defines the get points function
@@ -203,6 +206,37 @@ async def on_ready():
 @bot.tree.command(name="ping", description="Gets the ping of the bot. Mainly used for debug purposes.")
 async def ping(interaction: discord.Interaction):
     await interaction.response.send_message(f' Pong! {round (bot.latency * 1000)} ms', ephemeral=True)
+
+# Code for /config
+@bot.tree.command(name="config", decription="configures the points values of different actions")
+@bot.tree.describe(type="What action to edit the values for", value="What to set the value to")
+@app_commands.choices(type=[
+    app_commands.Choice(name="ad", value="ad"),
+    app_commands.Choice(name="ad x3", value="adX3"),
+    app_commands.Choice(name="recruitment", value="recruitment"),
+    app_commands.Choice(name="recruitment session", value="recruitmentsession"),
+    app_commands.Choice(name="rally", value="rally"),
+    app_commands.Choice(name="rally with over 5 people", value="rallyX5"),
+    app_commands.Choice(name="patrol", value="patrol"),
+    app_commands.Choice(name="gamenight", value="gamenight"),
+    app_commands.Choice(name="training", value="training"),
+    app_commands.Choice(name="raid", value="raid"),
+    app_commands.Choice(name="event hosting", value="hosting"),
+    app_commands.Choice(name="event co-hosting", value="cohosting"),
+    app_commands.Choice(name="server booster event bonus", value="booster"),
+    app_commands.Choice(name="joint event with other divisions bonus", value="joint"),
+    app_commands.Choice(name="logistics event logging", value="eventlogging"),
+    app_commands.Choice(name="contract officer completed payment", value="contractpayment"),
+    app_commands.Choice(name="nameplate order completed", value="nameplate"),
+    app_commands.Choice(name="leaderboard base commander kill", value="basecommander"),
+    app_commands.Choice(name="leaderboard bank robbery completed", value="bank"),
+    app_commands.Choice(name="leaderboard gold bar stolen", value="goldbar"),
+    app_commands.Choice(name="leaderboard trainee trained", value="trainee"),
+    app_commands.Choice(name="leaderboard visitor transported", value="visitortransport"),
+    app_commands.Choice(name="leaderboard pizza delivered", value="pizzadelivery")])
+async def config(interaction: discord.Interaction, type: app_commands.Choice[str], value: float):
+    
+    
 
 # /points check command
 @points_group.command(name="check", description="Check the points of you or another member")
