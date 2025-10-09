@@ -209,7 +209,7 @@ async def ping(interaction: discord.Interaction):
 
 # Code for /config
 @bot.tree.command(name="config", description="configures the points values of different actions")
-@bot.tree.describe(type="What action to edit the values for", value="What to set the value to")
+@app_commands.describe(type="What action to edit the values for", value="What to set the value to")
 @app_commands.choices(type=[
     app_commands.Choice(name="ad", value="ad"),
     app_commands.Choice(name="ad x3", value="adX3"),
