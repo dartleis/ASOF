@@ -9,6 +9,9 @@ POINTS_FILE = "points.json"        # Defines the points file as points.json
 VALUES_FILE = "values.json"        # Defines the values file as values.json
 JSON_CLEANUP_INTERVAL = 12        # How often to check if members have left the server, in hours
 REMOVE_AFTER_DAYS = 30        # How long to wait after a member has left the server to remove them from the points file, in days
+# Ad links
+AD_1 = "https://discord.com/channels/1382148653392592896/1382148654550225125/1407276154305511424"        # Nitro variant
+AD_2 = "https://discord.com/channels/1382148653392592896/1382148654550225125/1407276272165453884"        # Standard variant
 
 # Defines ids for roles
 booster_id = 1353100755338530889    # test id, does not correlate to ASOF server role ids
@@ -220,12 +223,12 @@ async def on_ready():
         cleanup_inactive_users.start()
 
 
-# Code for /ping
+# /ping command
 @bot.tree.command(name="ping", description="Gets the ping of the bot. Mainly used for debug purposes.")
 async def ping(interaction: discord.Interaction):
     await interaction.response.send_message(f' Pong! {round (bot.latency * 1000)} ms', ephemeral=True)
 
-# Code for /config
+# /config command
 @bot.tree.command(name="config", description="configures the points values of different actions")
 @app_commands.describe(type="What action to edit the values for", value="What to set the value to")
 @app_commands.choices(type=[
@@ -293,7 +296,7 @@ async def set(interaction: discord.Interaction, user: discord.User, amount: floa
     amount = tidy_number(amount)
     await interaction.response.send_message(f"Set the points of **{user.display_name}** to **{amount}**")
 
-# /log event
+# /log event command
 @log_group.command(name="event", description="Log the points for someone attending/hosting an event")
 @app_commands.describe(
     user="User who attended/hosted the event",
@@ -365,6 +368,106 @@ async def rally(interaction:discord.Interaction, user: discord.User, amount_atte
         f"Added **{added}** points to **{user.display_name}** for representing ASOF at the **{rally.name}** with {str(amount_attendees - 1).replace("-1", "0")} others"
         f"\nThey now have **{get_points(user.id)}** points"
     )
+
+# /ad command (WIP)
+ADS_FILE = "ads_logged.json"
+
+# Load and save ads_logged.json
+def load_ads():
+    if not os.path.exists(ADS_FILE):
+        with open(ADS_FILE, "w") as f:
+            json.dump([], f)
+    with open(ADS_FILE, "r") as f:
+        return json.load(f)
+
+def save_ads(data):
+    with open(ADS_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+
+@bot.tree.command(name="ad", description="Logs the points for an ad you posted in the SEA military Discord")
+@app_commands.describe(ad_link="The link to your advertisement")
+async def compare_user_msg(interaction: discord.Interaction, ad_link: str):
+    await interaction.response.defer(ephemeral=True)
+
+    def parse_message_link(link: str):
+        parts = link.rstrip("/").split("/")
+        try:
+            guild_id = int(parts[-3])
+            channel_id = int(parts[-2])
+            message_id = int(parts[-1])
+            return guild_id, channel_id, message_id
+        except (ValueError, IndexError):
+            return None
+
+    async def fetch_message(link: str):
+        parsed = parse_message_link(link)
+        if not parsed:
+            return None
+        guild_id, channel_id, message_id = parsed
+        try:
+            channel = bot.get_channel(channel_id) or await bot.fetch_channel(channel_id)
+            return await channel.fetch_message(message_id)
+        except Exception as e:
+            print(f"Error fetching message: {e}")
+            return None
+
+    # Fetch messages
+    user_msg = await fetch_message(ad_link)
+    ref_msg_1 = await fetch_message(AD_1)
+    ref_msg_2 = await fetch_message(AD_2)
+
+    if not user_msg:
+        await interaction.followup.send("❌ Could not fetch the advertisement message. Make sure the bot can see it.", ephemeral=True)
+        print(f"Error fetching advertisement from {interaction.user.name}")
+        return
+
+    if not ref_msg_1 or not ref_msg_2:
+        await interaction.followup.send("❌ Could not fetch one or both reference messages.", ephemeral=True)
+        print("Unable to fetch reference ad messages.")
+        return
+
+    # ✅ Check if the person executing the command posted the ad
+    if user_msg.author.id != interaction.user.id:
+        await interaction.followup.send(
+            f"❌ You can only log **your own** ads.\nThis ad was posted by: `{user_msg.author}`",
+            ephemeral=True
+        )
+        return
+
+    # ✅ Check if this ad was already logged
+    logged_ads = load_ads()
+    if str(user_msg.id) in logged_ads:
+        await interaction.followup.send("⚠️ This advertisement has already been logged!", ephemeral=True)
+        return
+
+    # Compare message contents
+    def compare_messages(msg_a, msg_b):
+        same_content = msg_a.content == msg_b.content
+        same_attachments = [a.url for a in msg_a.attachments] == [b.url for b in msg_b.attachments]
+        return same_content and same_attachments
+
+    match_1 = compare_messages(user_msg, ref_msg_1)
+    match_2 = compare_messages(user_msg, ref_msg_2)
+
+    if match_1:
+        result = "✅ Message matches recruitment ad (Nitro variant)"
+        points = get_value("ad")
+    elif match_2:
+        result = "✅ Message matches recruitment ad (Standard variant)"
+        points = get_value("ad")
+    else:
+        result = "❌ Ad invalid — it does not match the official ad template."
+        points = 0
+
+    if points > 0:
+        add_points(interaction.user.id, points)
+        logged_ads.append(str(user_msg.id))   # Save ad ID
+        save_ads(logged_ads)
+        result += f"\nAdded **{points}** points to {interaction.user.mention}."
+        f"\nThey now have **{get_points(interaction.user.id)}** points"
+
+    await interaction.followup.send(result)
 
 # Autocomplete function for /leaderboard
 async def leaderboard_page_autocomplete(interaction: discord.Interaction, current: str):
@@ -439,7 +542,6 @@ async def leaderboard(interaction: discord.Interaction, page: str):
         f"{title}\n" + "\n".join(lines),
         ephemeral=ephemeral
     )
-
 
 # Runs the bot with the bot token
 with open("token.txt", "r") as file:        # Imports the Discord bot token from a secure external file
