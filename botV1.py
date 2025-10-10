@@ -139,10 +139,8 @@ intents.guilds = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 points_group = app_commands.Group(name="points", description="EXP system")
 log_group = app_commands.Group(name="log", description="Used for logging things like events, ads, etc")
-leaderboard_group = app_commands.Group(name="leaderboard", description="Used by Leaderboard Officers to efficiently log points for leaderboard activity completions")
 bot.tree.add_command(points_group)
 bot.tree.add_command(log_group)
-bot.tree.add_command(leaderboard_group)
 
 
 # Adds new members to points.json
@@ -367,6 +365,81 @@ async def rally(interaction:discord.Interaction, user: discord.User, amount_atte
         f"Added **{added}** points to **{user.display_name}** for representing ASOF at the **{rally.name}** with {str(amount_attendees - 1).replace("-1", "0")} others"
         f"\nThey now have **{get_points(user.id)}** points"
     )
+
+# Autocomplete function for /leaderboard
+async def leaderboard_page_autocomplete(interaction: discord.Interaction, current: str):
+    points_data = load_points()
+    per_page = 10
+    total_pages = (len(points_data) + per_page - 1) // per_page or 1
+
+    suggestions = [app_commands.Choice(name=str(i), value=str(i)) for i in range(1, total_pages + 1)]
+    suggestions.append(app_commands.Choice(name="all", value="all"))
+
+    return [s for s in suggestions if current.lower() in s.name.lower()]
+
+# /leaderboard command
+@bot.tree.command(name="leaderboard", description="Shows how many points people have on a leaderboard")
+@app_commands.describe(page="Select a page number or 'all'")
+@app_commands.autocomplete(page=leaderboard_page_autocomplete)
+async def leaderboard(interaction: discord.Interaction, page: str):
+    points_data = load_points()
+    guild = interaction.guild
+    members = {str(m.id): m for m in guild.members if not m.bot}
+
+    leaderboard_list = [
+        (int(uid), info.get("points", 0))
+        for uid, info in points_data.items()
+        if uid in members
+    ]
+    leaderboard_list.sort(key=lambda x: x[1], reverse=True)
+
+    if len(leaderboard_list) == 0:
+        await interaction.response.send_message("No one is on the leaderboard yet.")
+        return
+
+    per_page = 10
+    total_pages = (len(leaderboard_list) + per_page - 1) // per_page
+
+    # If "all" is chosen
+    if page.lower() == "all":
+        display_list = leaderboard_list
+        ephemeral = True
+        page_num = 1
+    else:
+        try:
+            page_num = int(page)
+            if page_num < 1 or page_num > total_pages:
+                await interaction.response.send_message(f"❌ Invalid page number. There {f"are only **{total_pages}** pages" if total_pages > 1 else f"is only **1** page"}.", ephemeral=True)
+                return
+        except ValueError:
+            await interaction.response.send_message(f"❌ Page must be a number (1 to {total_pages}) or `all`.", ephemeral=True)
+            return
+
+        start_index = (page_num - 1) * per_page
+        end_index = start_index + per_page
+        display_list = leaderboard_list[start_index:end_index]
+        ephemeral = False
+
+    # Build leaderboard text
+    lines = []
+    rank_offset = 0 if page.lower() == "all" else (per_page * (page_num - 1))
+    for rank, (user_id, points) in enumerate(display_list, start=1 + rank_offset):
+        member = members.get(str(user_id))
+        name = member.display_name if member else f"Unknown User ({user_id})"
+        points_display = int(points) if float(points).is_integer() else points
+        lines.append(f"**#{rank}** — {name}: {points_display} points")
+
+    # Title
+    if page.lower() == "all":
+        title = f"🏆 Full Leaderboard — {len(leaderboard_list)} players"
+    else:
+        title = f"🏆 Leaderboard — Page {page_num}/{total_pages}"
+
+    await interaction.response.send_message(
+        f"{title}\n" + "\n".join(lines),
+        ephemeral=ephemeral
+    )
+
 
 # Runs the bot with the bot token
 with open("token.txt", "r") as file:        # Imports the Discord bot token from a secure external file
