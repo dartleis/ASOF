@@ -4,6 +4,8 @@ from discord import app_commands
 from discord.ext import commands, tasks
 import json, os, asyncio
 from datetime import datetime, timedelta
+import subprocess
+import re
 
 POINTS_FILE = "points.json"        # Defines the points file as points.json
 VALUES_FILE = "values.json"        # Defines the values file as values.json
@@ -18,11 +20,38 @@ logistics_id = 1353100755338530889    # test id
 contractofficer_id = 1353100755338530889    #test id
 #contractofficer_id = 1406564078666649660
 
+def get_fastfetch():
+    result = subprocess.run("fastfetch", shell=True, capture_output=True, text=True)
+    output = result.stdout
+
+    # Strip ANSI codes
+    output = re.sub(r'\x1B\[[0-?]*[ -/]*[@-~]', '', output)
+
+    # Remove the Local IP line
+    output = re.sub(r'^Local IP.*$', 'Local IP (wlan0): REDACTED', output, flags=re.MULTILINE)
+
+    # Insert a newline after the ASCII logo (before the 'pi@raspberrypi' line)
+    output = output.replace('pi@raspberrypi', '\npi@raspberrypi', 1)
+
+    return output
+
 def tidy_number(num):        # Automatically cleans up numbers ending in .0
     if isinstance(num, float) and num.is_integer():
         return int(num)
     return num
 
+def logistics_check():
+    async def predicate(interaction: discord.Interaction) -> bool:
+        member = interaction.user
+        if member and discord.utils.get(member.roles, id=logistics_id):
+            return True
+        await interaction.response.send_message(
+            "c❌ Sorry! You must be in the Logistics Department to use this command.",
+            ephemeral=True
+        )
+        return False
+    return app_commands.check(predicate)
+    
 def load_points():
     if not os.path.exists(POINTS_FILE):
         with open(POINTS_FILE, "w") as f:
@@ -225,8 +254,16 @@ async def on_ready():
 async def ping(interaction: discord.Interaction):
     await interaction.response.send_message(f' Pong! {round (bot.latency * 1000)} ms', ephemeral=True)
 
+# Code for /fastfetch
+@bot.tree.command(name="fastfetch", description="fastfetch")
+async def fastfetch(interaction: discord.Interaction):
+    output = get_fastfetch()
+    await interaction.response.send_message(f"```\n{get_fastfetch()}\n```", ephemeral=False)
+
+
 # Code for /config
 @bot.tree.command(name="config", description="configures the points values of different actions")
+@logistics_check()
 @app_commands.describe(type="What action to edit the values for", value="What to set the value to")
 @app_commands.choices(type=[
     app_commands.Choice(name="ad", value="ad"),
@@ -271,6 +308,7 @@ async def check(interaction: discord.Interaction, user: discord.User = None):
 
 # /points add command
 @points_group.command(name="add", description="Add points to a user")
+@logistics_check()
 @app_commands.describe(user="User to add points to", amount="How many points to add")
 async def add(interaction: discord.Interaction, user: discord.User, amount: float):
     add_points(user.id, amount)
@@ -279,6 +317,7 @@ async def add(interaction: discord.Interaction, user: discord.User, amount: floa
     
 # /points subtract command
 @points_group.command(name="subtract", description="Remove points from a user")
+@logistics_check()
 @app_commands.describe(user="User to remove points from", amount="How many points to remove")
 async def subtract(interaction: discord.Interaction, user: discord.User, amount: float):
     add_points(user.id, -abs(amount))
@@ -287,6 +326,7 @@ async def subtract(interaction: discord.Interaction, user: discord.User, amount:
 
 # /points set command
 @points_group.command(name="set", description="Set the points of a user")
+@logistics_check()
 @app_commands.describe(user="User to set the points of", amount="Amount of points to set")
 async def set(interaction: discord.Interaction, user: discord.User, amount: float):
     set_points(user.id, amount)
@@ -295,6 +335,7 @@ async def set(interaction: discord.Interaction, user: discord.User, amount: floa
 
 # /log event
 @log_group.command(name="event", description="Log the points for someone attending/hosting an event")
+@logistics_check()
 @app_commands.describe(
     user="User who attended/hosted the event",
     event_type="What type of event",
@@ -313,6 +354,8 @@ async def set(interaction: discord.Interaction, user: discord.User, amount: floa
     app_commands.Choice(name="Hosting", value="hosting")
 ])
 async def event(interaction: discord.Interaction, user: discord.User, event_type: app_commands.Choice[str], attendance_type: app_commands.Choice[str]): 
+    
+# Attendance types
     if attendance_type.value == "attending":
         added = get_value(event_type.value)
     else:
@@ -324,32 +367,42 @@ async def event(interaction: discord.Interaction, user: discord.User, event_type
     if member and discord.utils.get(member.roles, id=booster_id):
         booster_bonus = get_value("booster")
         added += booster_bonus
-   
-    add_points(user.id, added)
 
-    msg = (f"Added **{added}** points to **{user.display_name}** for {attendance_type.name.lower().replace(" ", "-")} a **{event_type.name}**.")
+# Checks if user is a member of logistics
+    if member and discord.utils.get(member.roles, id=logistics_id):
+        add_points(user.id, added)
+        msg = (f"Added **{added}** points to **{user.display_name}** for {attendance_type.name.lower().replace(" ", "-")} a **{event_type.name}**.")
 
-    if booster_bonus > 0:
-        msg += f"\n<:booster_icon:1425732545986822164> That includes an extra **{booster_bonus}** points for being a **Server Booster**! Thank you for supporting the division!"
+        if booster_bonus > 0:        # Checks if member is a server booster
+            msg += f"\n<:booster_icon:1425732545986822164> That includes an extra **{booster_bonus}** points for being a **Server Booster**! Thank you for supporting the division!"
 
-    msg += f"\nThey now have **{get_points(user.id)}** points."
+        msg += f"\nThey now have **{get_points(user.id)}** points."
 
-    await interaction.response.send_message(msg)
+        await interaction.response.send_message(msg)
+    else:
+        await interaction.response.send_message("❌ Sorry! You must be in the Logistics Department to run this command")
 
 
 # /log recruitment command
 @log_group.command(name="recruitment", description="Log the points for someone recruiting a member in the Discord")
+@logistics_check()
 @app_commands.describe(user="User who recruited someone", amount="How many people were recruited (Optional)")
 async def recruitment(interaction: discord.Interaction, user: discord.User, amount: int = 1):
     added = get_value("recruitment") * amount
-    add_points(user.id, added)
-    await interaction.response.send_message(
+    
+    # Checks if user is a member of logistics
+    if member and discord.utils.get(member.roles, id=logistics_id):
+        add_points(user.id, added)
+        await interaction.response.send_message(
         f"Added **{added}** points to **{user.display_name}** for **recruiting** **{amount}** members.\n"
-        f" They now have **{get_points(user.id)}** points."
+        f" They now have **{get_points(user.id)}** points.")
+    else: 
+        await interaction.response.send_message("❌ Sorry! You must be in the Logistics Department to run this command"
     )
 
 # /log rally command
 @log_group.command(name="rally", description="Log the points for someone attending the weekly rally")
+@logistics_check()
 @app_commands.describe(user="User who attended the rally", amount_attendees="Amount of total attendees were at the rally", rally="Which rally was attended")
 @app_commands.choices(rally=[
     app_commands.Choice(name="1 AM rally", value="1am"),
@@ -412,7 +465,7 @@ async def leaderboard(interaction: discord.Interaction, page: str):
                 await interaction.response.send_message(f"❌ Invalid page number. There {f"are only **{total_pages}** pages" if total_pages > 1 else f"is only **1** page"}.", ephemeral=True)
                 return
         except ValueError:
-            await interaction.response.send_message(f"❌ Page must be a number (1 to {total_pages}) or `all`.", ephemeral=True)
+            await interaction.response.send_message(f"❌ Page must be {f" a number (1 to {total_pages})" if total_pages > 1 else "1"} or `all`.", ephemeral=True)
             return
 
         start_index = (page_num - 1) * per_page
