@@ -370,21 +370,15 @@ async def event(interaction: discord.Interaction, user: discord.User, event_type
     if member and discord.utils.get(member.roles, id=booster_id):
         booster_bonus = get_value("booster")
         added += booster_bonus
+    add_points(user.id, added)
+    msg = (f"Added **{added}** points to **{user.display_name}** for {attendance_type.name.lower().replace(" ", "-")} a **{event_type.name}**.")
 
-# Checks if user is a member of logistics
-    if member and discord.utils.get(member.roles, id=logistics_id):
-        add_points(user.id, added)
-        msg = (f"Added **{added}** points to **{user.display_name}** for {attendance_type.name.lower().replace(" ", "-")} a **{event_type.name}**.")
-
-        if booster_bonus > 0:        # Checks if member is a server booster
+    if booster_bonus > 0:        # Checks if member is a server booster
             msg += f"\n<:booster_icon:1425732545986822164> That includes an extra **{booster_bonus}** points for being a **Server Booster**! Thank you for supporting the division!"
 
-        msg += f"\nThey now have **{get_points(user.id)}** points."
+    msg += f"\nThey now have **{get_points(user.id)}** points."
 
-        await interaction.response.send_message(msg)
-    else:
-        await interaction.response.send_message("❌ Sorry! You must be in the Logistics Department to run this command")
-
+    await interaction.response.send_message(msg)
 
 # /log recruitment command
 @log_group.command(name="recruitment", description="Log the points for someone recruiting a member in the Discord")
@@ -392,16 +386,10 @@ async def event(interaction: discord.Interaction, user: discord.User, event_type
 @app_commands.describe(user="User who recruited someone", amount="How many people were recruited (Optional)")
 async def recruitment(interaction: discord.Interaction, user: discord.User, amount: int = 1):
     added = get_value("recruitment") * amount
-    
-    # Checks if user is a member of logistics
-    if member and discord.utils.get(member.roles, id=logistics_id):
-        add_points(user.id, added)
-        await interaction.response.send_message(
-        f"Added **{added}** points to **{user.display_name}** for **recruiting** **{amount}** members.\n"
-        f" They now have **{get_points(user.id)}** points.")
-    else: 
-        await interaction.response.send_message("❌ Sorry! You must be in the Logistics Department to run this command"
-    )
+    add_points(user.id, added)
+    await interaction.response.send_message(
+    f"Added **{added}** points to **{user.display_name}** for **recruiting** **{amount}** members.\n"
+    f" They now have **{get_points(user.id)}** points.")
 
 # /log rally command
 @log_group.command(name="rally", description="Log the points for someone attending the weekly rally")
@@ -411,7 +399,6 @@ async def recruitment(interaction: discord.Interaction, user: discord.User, amou
     app_commands.Choice(name="1 AM rally", value="1am"),
     app_commands.Choice(name="1 PM rally", value="1pm")])
 async def rally(interaction:discord.Interaction, user: discord.User, amount_attendees: int, rally: app_commands.Choice[str]):
-    amount_attendees = abs(amount_attendees)
     if amount_attendees >= 5:
         added = get_value("rallyX5")
     else:
@@ -421,6 +408,35 @@ async def rally(interaction:discord.Interaction, user: discord.User, amount_atte
         f"Added **{added}** points to **{user.display_name}** for representing ASOF at the **{rally.name}** with {str(amount_attendees - 1).replace("-1", "0")} others"
         f"\nThey now have **{get_points(user.id)}** points"
     )
+
+# /log leaderboard command
+@log_group.command(name="leaderboard", description="Log the points for someone completing leaderboard tasks")
+@logistics_check()
+@app_commands.describe(user="User who completed the leaderboard task", task="Which leaderboard task was completed", amount="How many times was the task completed")
+@app_commands.choices(task=[
+    app_commands.Choice(name="Visitor Transportation", value="visitortransport"),
+    app_commands.Choice(name="Pizza Delivery", value="pizzadelivery"),
+    app_commands.Choice(name="Bank Robbery", value="bank"),
+    app_commands.Choice(name="Gold Bar Stolen", value="goldbar"),
+    app_commands.Choice(name="Trainee Trained", value="trainee"),
+    app_commands.Choice(name="Base Commander Elimination", value="basecommander")])
+async def leaderboard(interaction: discord.Interaction, user: discord.User, task: app_commands.Choice[str], amount: int = 1):
+    added = get_value(task.value * amount)
+    add_points(user.id, added)
+    msg = f"Added **{added}** points to **{user.name}** for "
+    if task.value == "visitortransport":
+        msg += f"transporting **{amount}** visitor{"s" if amount > 1 else ""}"
+    elif task.value == "pizzadelivery":
+        msg += f"delivering **{amount}** pizza{"s" if amount > 1 else ""}"
+    elif task.value == "bank":
+        msg += f"robbing **{amount}** bank{"s" if amount > 1 else ""}"
+    elif task.value == "goldbar":
+        msg += f"stealing **{amount}** gold bar{"s" if amount > 1 else ""}"
+    elif task.value == "trainee":
+        msg += f"training **{amount}** trainee{"s" if amount > 1 else ""}"
+    else:
+        msg += f"Eliminating **{amount}** Base Commander{"s" if amount > 1 else ""}"
+    await interaction.response.send_message(msg)
 
 # Autocomplete function for /leaderboard
 async def leaderboard_page_autocomplete(interaction: discord.Interaction, current: str):
@@ -495,7 +511,6 @@ async def leaderboard(interaction: discord.Interaction, page: str):
         f"{title}\n" + "\n".join(lines),
         ephemeral=ephemeral
     )
-
 
 # Runs the bot with the bot token
 with open("token.txt", "r") as file:        # Imports the Discord bot token from a secure external file
