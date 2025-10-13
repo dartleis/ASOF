@@ -17,8 +17,11 @@ booster_id = 1353100755338530889    # test id, does not correlate to ASOF server
 #booster_id = 1385279332049485935
 logistics_id = 1353100755338530889    # test id
 #logistics_id = 1383446002182262856
+#logistics_chief_id = "" 
 contractofficer_id = 1353100755338530889    #test id
 #contractofficer_id = 1406564078666649660
+
+
 
 def get_fastfetch():
     result = subprocess.run("fastfetch", shell=True, capture_output=True, text=True)
@@ -27,7 +30,7 @@ def get_fastfetch():
     # Strip ANSI codes
     output = re.sub(r'\x1B\[[0-?]*[ -/]*[@-~]', '', output)
 
-    # Remove the Local IP line
+    # Redact the Local IP line
     output = re.sub(r'^Local IP.*$', 'Local IP (wlan0): REDACTED', output, flags=re.MULTILINE)
 
     # Insert a newline after the ASCII logo (before the 'pi@raspberrypi' line)
