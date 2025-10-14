@@ -21,7 +21,6 @@ booster_id = 1353100755338530889    # test id, does not correlate to ASOF server
 #booster_id = 1385279332049485935
 logistics_id = 1353100755338530889    # test id
 #logistics_id = 1383446002182262856
-#logistics_chief_id = "" 
 contractofficer_id = 1353100755338530889    #test id
 #contractofficer_id = 1406564078666649660
 
@@ -87,6 +86,36 @@ def logistics_check():
             return True
         await interaction.response.send_message(
             "Sorry! You must be in the Logistics Department to use this command.",
+            ephemeral=True
+        )
+        return False
+    return app_commands.check(predicate)
+
+def admin_check():
+    async def predicate(interaction: discord.Interaction) -> bool:
+        member = interaction.user
+        # Check if the member has administrator permissions
+        if member.guild_permissions.administrator:
+            return True
+        await interaction.response.send_message(
+            "You must be an administrator to use this command.",
+            ephemeral=True
+        )
+        return False
+    return app_commands.check(predicate)
+
+def logistics_privileged_check():
+    # Checks if the user has a privileged role or is a privileged user.
+    PRIVILEGED_ROLES = [1382165273049694299, 1382165270780575844, 1382165268389957734]  # add any role IDs here
+    PRIVILEGED_USERS = [805175554209873940]               # add any user IDs here
+    async def predicate(interaction: discord.Interaction) -> bool:
+        member = interaction.user
+        has_role = any(discord.utils.get(member.roles, id=r_id) for r_id in PRIVILEGED_ROLES)
+        is_user = member.id in PRIVILEGED_USERS
+        if has_role or is_user:
+            return True
+        await interaction.response.send_message(
+            "You do not have permission to use this command.",
             ephemeral=True
         )
         return False
@@ -318,7 +347,7 @@ async def fastfetch(interaction: discord.Interaction):
 
 # Code for /config
 @bot.tree.command(name="config", description="configures the points values of different actions")
-@logistics_check()
+@admin_check()
 @app_commands.describe(type="What action to edit the values for", value="What to set the value to")
 @app_commands.choices(type=[
     app_commands.Choice(name="ad", value="ad"),
