@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 
 # Constants
 POINTS_FILE = "points.json"
-VALUES_FILE = "values.json"
+CONFIG_FILE = "config.json"
 JSON_CLEANUP_INTERVAL = 12  # hours
 REMOVE_AFTER_DAYS = 30  # days
 
@@ -78,6 +78,36 @@ class DiscordConsoleForwarder:
                     text = text[:1900] + "..."
                 await channel.send(f"```\n{text}\n```")
 
+class RankAddModal(discord.ui.Modal, title="Add New Rank"):
+    rank_name = discord.ui.TextInput(label="Rank Name", placeholder="e.g. Sergeant")
+    role_id = discord.ui.TextInput(label="Role ID", placeholder="123456789012345678")
+    points_required = discord.ui.TextInput(label="Points Required", placeholder="5000")
+    requires_roles = discord.ui.TextInput(
+        label="Required Roles (comma-separated IDs)", 
+        placeholder="Leave empty if none", 
+        required=False
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            name = self.rank_name.value.strip()
+            role_id = int(self.role_id.value.strip())
+            points_req = int(self.points_required.value.strip())
+            requires = (
+                [int(x.strip()) for x in self.requires_roles.value.split(",") if x.strip()]
+                if self.requires_roles.value.strip()
+                else []
+            )
+            add_rank(name, role_id, points_req, requires)
+            await interaction.response.send_message(
+                f"✅ Added rank **{name}** with {points_req} points required.",
+                ephemeral=True
+            )
+        except Exception as e:
+            await interaction.response.send_message(
+                f"❌ Error: {e}", ephemeral=True
+            )
+
 """
 UTILITY FUNCTIONS
 """
@@ -94,22 +124,68 @@ def get_fastfetch():
 def tidy_number(num):
     return int(num) if isinstance(num, float) and num.is_integer() else num
 
+def check_promotion_eligibility(member: discord.Member) -> list[str]:
+    points = get_points(member.id)
+    ranks_data = load_ranks()
+    current_roles = [r.id for r in member.roles]
+    messages = []
 
-def load_json(file, default):
-    if not os.path.exists(file):
-        with open(file, "w") as f:
-            json.dump(default, f, indent=4)
-    with open(file, "r") as f:
-        data = json.load(f)
-    return {
-        k: tidy_number(v) if isinstance(v, (int, float)) else v for k, v in data.items()
-    }
+    for rank_name, rank_info in ranks_data.items():
+        role_id = rank_info.get("role_id")
+        points_required = rank_info.get("points_required", 0)
+        required_roles = rank_info.get("requires_roles", [])
 
+        if role_id in current_roles:
+            continue
+        if points < points_required:
+            continue
+        if any(req not in current_roles for req in required_roles):
+            continue
 
-def save_json(file, data):
-    with open(file, "w") as f:
+        messages.append(f"✅ Ready for promotion to **{rank_name}** (<@&{role_id}>)")
+    return messages
+
+def load_config():
+    if not os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "w") as f:
+            json.dump({"values": {}, "ranks": {}}, f, indent=4)
+    with open(CONFIG_FILE, "r") as f:
+        return json.load(f)
+
+def save_config(data):
+    with open(CONFIG_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
+def get_value(key: str):
+    return load_config()["values"].get(key, 0)
+
+def set_value(key: str, value: float):
+    data = load_config()
+    data["values"][key] = value
+    save_config(data)
+
+def load_ranks():
+    return load_config().get("ranks", {})
+
+def edit_rank(name: str, role_id: int, points_required: int, requires_roles: list[int]):
+    data = load_config()
+    data["ranks"][name] = {
+        "role_id": role_id,
+        "points_required": points_required,
+        "requires_roles": requires_roles
+    }
+    save_config(data)
+
+def remove_rank(name: str):
+    data = load_config()
+    if name in data["ranks"]:
+        del data["ranks"][name]
+        save_config(data)
+        return True
+    return False
+
+def list_rank_names():
+    return list(load_ranks().keys())
 
 def privileged_check(group: str = None, target_param: str | list[str] = None):
     async def predicate(interaction: discord.Interaction) -> bool:
@@ -250,14 +326,15 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 points_group = app_commands.Group(name="points", description="EXP system")
 log_group = app_commands.Group(name="log", description="Logging actions")
 stats_group = app_commands.Group(name="stats", description="Bot statistics")
+config_group = app_commands.Group(name="config", description="Configure bot settings")
 bot.tree.add_command(points_group)
 bot.tree.add_command(log_group)
 bot.tree.add_command(stats_group)
+bot.tree.add_command(config_group)
 
 """
 EVENTS
 """
-
 
 @bot.event
 async def on_member_join(member):
@@ -337,13 +414,12 @@ async def fastfetch_cmd(interaction: discord.Interaction):
     await interaction.response.send_message(f"```\n{get_fastfetch()}\n```")
 
 
-# Code for /config
-@bot.tree.command(
-    name="config", description="configures the points values of different actions"
-)
+# /config values
+@config_group.command(name="values", description="Configure values for different actions within the division")
 @privileged_check("config")
 @app_commands.describe(
-    type="What action to edit the values for", value="What to set the value to"
+    type="What action to edit the values for",
+    value="What to set the value to"
 )
 @app_commands.choices(
     type=[
@@ -380,14 +456,70 @@ async def fastfetch_cmd(interaction: discord.Interaction):
         app_commands.Choice(name="leaderboard pizza delivered", value="pizzadelivery"),
     ]
 )
-async def config(
-    interaction: discord.Interaction, type: app_commands.Choice[str], value: float
+
+# /config values
+async def config_values(
+    interaction: discord.Interaction,
+    type: app_commands.Choice[str],
+    value: float
 ):
     set_value(type.value, value)
     await interaction.response.send_message(
-        f"Set value of **{type.value}** to **{get_value(type.value)}**"
+        f"Set value of **{type.value}** to **{get_value(type.value)}** points."
     )
 
+# /config ranks edit
+@config_group.command(name="ranks", description="Add or edit a rank")
+@privileged_check("config")
+@app_commands.autocomplete(rank=rank_autocomplete)
+@app_commands.describe(rank="Select a rank to edit or 'Add New'")
+async def config_ranks_edit(interaction: discord.Interaction, rank: str):
+    if rank == "__add_new__":
+        # Empty modal for new rank
+        await interaction.response.send_modal(RankEditModal())
+    else:
+        ranks = load_ranks()
+        r = ranks.get(rank, {})
+        modal = RankEditModal(
+            name=rank,
+            role_id=str(r.get("role_id", "")),
+            points_required=str(r.get("points_required", "")),
+            requires_roles=",".join(str(x) for x in r.get("requires_roles", []))
+        )
+        await interaction.response.send_modal(modal)
+
+@config_group.command(name="ranks_remove", description="Remove a rank")
+@privileged_check("config")
+@app_commands.autocomplete(rank=rank_autocomplete)
+@app_commands.describe(rank="Select rank to remove")
+async def config_ranks_remove(interaction: discord.Interaction, rank: str):
+    if rank == "__add_new__":
+        await interaction.response.send_message("❌ You can't remove 'Add New'.", ephemeral=True)
+        return
+
+    if remove_rank(rank):
+        await interaction.response.send_message(f"🗑️ Removed rank **{rank}**")
+    else:
+        await interaction.response.send_message(f"❌ Rank **{rank}** not found.", ephemeral=True)
+
+@stats_group.command(name="ranks", description="List all ranks and their requirements")
+async def config_ranks_list(interaction: discord.Interaction):
+    ranks = load_ranks()
+    if not ranks:
+        await interaction.response.send_message("ℹ️ No ranks configured yet.", ephemeral=True)
+        return
+
+    embed = discord.Embed(title="Configured Ranks", color=discord.Color.blurple())
+    for name, info in ranks.items():
+        embed.add_field(
+            name=f"{name} (<@&{info['role_id']}>)",
+            value=(
+                f"**Points:** {info['points_required']}\n"
+                f"**Required Roles:** {', '.join(f'<@&{r}>' for r in info['requires_roles']) or 'None'}"
+            ),
+            inline=False
+        )
+    await interaction.response.send_message(embed=embed)
 
 # /points check command
 @points_group.command(
