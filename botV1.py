@@ -2,10 +2,14 @@
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
-import json, os, asyncio
+import json
+import os
+import asyncio
+from asyncio import Queue
 from datetime import datetime, timedelta
 import subprocess
 import re
+import sys
 
 POINTS_FILE = "points.json"        # Defines the points file as points.json
 VALUES_FILE = "values.json"        # Defines the values file as values.json
@@ -21,8 +25,41 @@ logistics_id = 1353100755338530889    # test id
 contractofficer_id = 1353100755338530889    #test id
 #contractofficer_id = 1406564078666649660
 
+LOG_CHANNEL = 1427442431682543707
 
+# Forwards logs to discord channel
+class DiscordConsoleForwarder:
+    def __init__(self, bot, channel_id, original_stream, buffer_time=3):
+        self.bot = bot
+        self.channel_id = channel_id
+        self.original_stream = original_stream
+        self.queue = Queue()
+        self.buffer_time = buffer_time
 
+    def write(self, message):
+        self.original_stream.write(message)
+        self.original_stream.flush()
+        if "discord.app_commands.errors.CheckFailure" in message:
+            return
+        if message.strip():
+            self.queue.put_nowait(message)
+
+    def flush(self):
+        self.original_stream.flush()
+
+    async def start_flusher(self):
+        while True:
+            await asyncio.sleep(self.buffer_time)
+            if not self.queue.empty():
+                msgs = []
+                while not self.queue.empty():
+                    msgs.append(await self.queue.get())
+                channel = self.bot.get_channel(self.channel_id)
+                if channel:
+                    text = "".join(msgs)
+                    if len(text) > 1900:
+                        text = text[:1900] + "..."
+                    await channel.send(f"```\n{text}\n```")
 def get_fastfetch():
     result = subprocess.run("fastfetch", shell=True, capture_output=True, text=True)
     output = result.stdout
@@ -49,7 +86,7 @@ def logistics_check():
         if member and discord.utils.get(member.roles, id=logistics_id):
             return True
         await interaction.response.send_message(
-            "c❌ Sorry! You must be in the Logistics Department to use this command.",
+            "Sorry! You must be in the Logistics Department to use this command.",
             ephemeral=True
         )
         return False
@@ -237,19 +274,34 @@ async def add_all_members(guild):
 
 @bot.event
 async def on_ready():
+    global stdout_forwarder, stderr_forwarder
+    stdout_forwarder = DiscordConsoleForwarder(bot, LOG_CHANNEL, sys.__stdout__)
+    stderr_forwarder = DiscordConsoleForwarder(bot, LOG_CHANNEL, sys.__stderr__)
+
+    sys.stdout = stdout_forwarder
+    sys.stderr = stderr_forwarder
+
+    # Start flusher tasks
+    bot.loop.create_task(stdout_forwarder.start_flusher())
+    bot.loop.create_task(stderr_forwarder.start_flusher())
+
+    print("Console forwarding to Discord is now active.")
+    print(get_fastfetch())
     print(f"Logged in successfully as {bot.user}")
+
     try:
-        synced = await bot.tree.sync()        # Sync slash commands
+        synced = await bot.tree.sync()
         print(f"Synced {len(synced)} slash command(s)")
     except Exception as e:
         print(f"Error syncing commands: {e}")
-    
+
     for guild in bot.guilds:
         print(f"Checking members in: {guild.name}")
         await add_all_members(guild)
 
     if not cleanup_inactive_users.is_running():
         cleanup_inactive_users.start()
+        
 
 
 # Code for /ping
@@ -481,10 +533,10 @@ async def leaderboard(interaction: discord.Interaction, page: str):
         try:
             page_num = int(page)
             if page_num < 1 or page_num > total_pages:
-                await interaction.response.send_message(f"❌ Invalid page number. There {f"are only **{total_pages}** pages" if total_pages > 1 else f"is only **1** page"}.", ephemeral=True)
+                await interaction.response.send_message(f"Invalid page number. There {f"are only **{total_pages}** pages" if total_pages > 1 else f"is only **1** page"}.", ephemeral=True)
                 return
         except ValueError:
-            await interaction.response.send_message(f"❌ Page must be {f" a number (1 to {total_pages})" if total_pages > 1 else "1"} or `all`.", ephemeral=True)
+            await interaction.response.send_message(f"Page must be {f" a number (1 to {total_pages})" if total_pages > 1 else "1"} or `all`.", ephemeral=True)
             return
 
         start_index = (page_num - 1) * per_page
