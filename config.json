@@ -1,1 +1,29 @@
-
+{
+  "values": {
+    "ad": 0,
+    "adX3": 0,
+    "recruitment": 0,
+    "recruitmentsession": 0,
+    "rally": 50,
+    "rallyX5": 70,
+    "patrol": 0,
+    "gamenight": 0,
+    "training": 0,
+    "raid": 0,
+    "hosting": 0,
+    "cohosting": 0,
+    "booster": 0,
+    "jointevent": 0,
+    "eventlogging": 0,
+    "contractpayment": 0,
+    "nameplate": 0,
+    "basecommander": 0,
+    "bank": 0,
+    "goldbar": 0,
+    "trainee": 0,
+    "visitortransport": 0,
+    "pizzadelivery": 0
+  }
+  "ranks": {
+  }
+}
