@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 import subprocess
 import re
 import sys
+import builtins
 
 POINTS_FILE = "points.json"        # Defines the points file as points.json
 VALUES_FILE = "values.json"        # Defines the values file as values.json
@@ -17,13 +18,22 @@ JSON_CLEANUP_INTERVAL = 12        # How often to check if members have left the 
 REMOVE_AFTER_DAYS = 30        # How long to wait after a member has left the server to remove them from the points file, in days
 
 # Defines ids for roles
-booster_id = 1353100755338530889    # test id, does not correlate to ASOF server role ids
-#booster_id = 1385279332049485935
-logistics_id = 1353100755338530889    # test id
-#logistics_id = 1383446002182262856
-#logistics_chief_id = "" 
-contractofficer_id = 1353100755338530889    #test id
-#contractofficer_id = 1406564078666649660
+test_id = 1353100755338530889
+commander_id = 1382165268389957734
+chiefofstaff_id = 1382165270780575844
+chiefoflogistics_id = 1382165273049694299
+logistics_id = 1383446002182262856
+contractofficer_id = 1406564078666649660
+nameplatedesigner_id = 1405169617751638076
+booster_id = 1385279332049485935
+
+ALWAYS_PRIVILEGED_ROLE_IDS = [test_id, commander_id, chiefofstaff_id]
+ALWAYS_PRIVILEGED_USER_IDS = [805175554209873940]
+PRIVILEGE_GROUP_ROLE_IDS = {
+    "logistics": [logistics_id, chiefoflogistics_id],
+    "config": [chiefoflogistics_id]
+}
+
 
 LOG_CHANNEL = 1427442431682543707
 
@@ -80,16 +90,31 @@ def tidy_number(num):        # Automatically cleans up numbers ending in .0
         return int(num)
     return num
 
-def logistics_check():
+def privileged_check(group: str = None):
     async def predicate(interaction: discord.Interaction) -> bool:
         member = interaction.user
-        if member and discord.utils.get(member.roles, id=logistics_id):
+
+        # Use builtins.set to avoid collisions
+        allowed_roles = builtins.set(ALWAYS_PRIVILEGED_ROLE_IDS)
+
+        # Add group roles if the group exists
+        if group and group in PRIVILEGE_GROUP_ROLE_IDS:
+            allowed_roles.update(PRIVILEGE_GROUP_ROLE_IDS[group])
+
+        # Check if member has any allowed role
+        has_role = any(discord.utils.get(member.roles, id=r_id) for r_id in allowed_roles)
+        is_user = member.id in ALWAYS_PRIVILEGED_USER_IDS
+
+        if has_role or is_user:
             return True
+
+        # No permission
         await interaction.response.send_message(
-            "Sorry! You must be in the Logistics Department to use this command.",
+            "You do not have permission to use this command.",
             ephemeral=True
         )
         return False
+
     return app_commands.check(predicate)
     
 def load_points():
@@ -318,7 +343,7 @@ async def fastfetch(interaction: discord.Interaction):
 
 # Code for /config
 @bot.tree.command(name="config", description="configures the points values of different actions")
-@logistics_check()
+@privileged_check("config")
 @app_commands.describe(type="What action to edit the values for", value="What to set the value to")
 @app_commands.choices(type=[
     app_commands.Choice(name="ad", value="ad"),
@@ -363,7 +388,7 @@ async def check(interaction: discord.Interaction, user: discord.User = None):
 
 # /points add command
 @points_group.command(name="add", description="Add points to a user")
-@logistics_check()
+@privileged_check("logistics")
 @app_commands.describe(user="User to add points to", amount="How many points to add")
 async def add(interaction: discord.Interaction, user: discord.User, amount: float):
     add_points(user.id, amount)
@@ -372,7 +397,7 @@ async def add(interaction: discord.Interaction, user: discord.User, amount: floa
     
 # /points subtract command
 @points_group.command(name="subtract", description="Remove points from a user")
-@logistics_check()
+@privileged_check("logistics")
 @app_commands.describe(user="User to remove points from", amount="How many points to remove")
 async def subtract(interaction: discord.Interaction, user: discord.User, amount: float):
     add_points(user.id, -abs(amount))
@@ -381,7 +406,7 @@ async def subtract(interaction: discord.Interaction, user: discord.User, amount:
 
 # /points set command
 @points_group.command(name="set", description="Set the points of a user")
-@logistics_check()
+@privileged_check("logistics")
 @app_commands.describe(user="User to set the points of", amount="Amount of points to set")
 async def set(interaction: discord.Interaction, user: discord.User, amount: float):
     set_points(user.id, amount)
@@ -390,7 +415,7 @@ async def set(interaction: discord.Interaction, user: discord.User, amount: floa
 
 # /log event
 @log_group.command(name="event", description="Log the points for someone attending/hosting an event")
-@logistics_check()
+@privileged_check("logistics")
 @app_commands.describe(
     user="User who attended/hosted the event",
     event_type="What type of event",
@@ -434,7 +459,7 @@ async def event(interaction: discord.Interaction, user: discord.User, event_type
 
 # /log recruitment command
 @log_group.command(name="recruitment", description="Log the points for someone recruiting a member in the Discord")
-@logistics_check()
+@privileged_check("logistics")
 @app_commands.describe(user="User who recruited someone", amount="How many people were recruited (Optional)")
 async def recruitment(interaction: discord.Interaction, user: discord.User, amount: int = 1):
     added = get_value("recruitment") * amount
@@ -445,7 +470,7 @@ async def recruitment(interaction: discord.Interaction, user: discord.User, amou
 
 # /log rally command
 @log_group.command(name="rally", description="Log the points for someone attending the weekly rally")
-@logistics_check()
+@privileged_check("logistics")
 @app_commands.describe(user="User who attended the rally", amount_attendees="Amount of total attendees were at the rally", rally="Which rally was attended")
 @app_commands.choices(rally=[
     app_commands.Choice(name="1 AM rally", value="1am"),
@@ -463,7 +488,7 @@ async def rally(interaction:discord.Interaction, user: discord.User, amount_atte
 
 # /log leaderboard command
 @log_group.command(name="leaderboard", description="Log the points for someone completing leaderboard tasks")
-@logistics_check()
+@privileged_check("logistics")
 @app_commands.describe(user="User who completed the leaderboard task", task="Which leaderboard task was completed", amount="How many times was the task completed")
 @app_commands.choices(task=[
     app_commands.Choice(name="Visitor Transportation", value="visitortransport"),
