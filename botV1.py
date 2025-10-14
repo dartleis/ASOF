@@ -233,8 +233,10 @@ intents.guilds = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 points_group = app_commands.Group(name="points", description="EXP system")
 log_group = app_commands.Group(name="log", description="Used for logging things like events, ads, etc")
+stats_group = app_commands.Group(name="stats", description="Used for viewing important stats about the bot, such as ping")
 bot.tree.add_command(points_group)
 bot.tree.add_command(log_group)
+bot.tree.add_command(stats_group)
 
 
 # Adds new members to points.json
@@ -330,12 +332,12 @@ async def on_ready():
 
 
 # Code for /ping
-@bot.tree.command(name="ping", description="Gets the ping of the bot. Mainly used for debug purposes.")
+@stats_group.command(name="ping", description="Gets the ping of the bot.")
 async def ping(interaction: discord.Interaction):
     await interaction.response.send_message(f' Pong! {round (bot.latency * 1000)} ms', ephemeral=True)
 
 # Code for /fastfetch
-@bot.tree.command(name="fastfetch", description="fastfetch")
+@stats_group.command(name="fastfetch", description="Shows system information and uptime by running fastfetch on the host")
 async def fastfetch(interaction: discord.Interaction):
     output = get_fastfetch()
     await interaction.response.send_message(f"```\n{get_fastfetch()}\n```", ephemeral=False)
@@ -351,7 +353,7 @@ async def fastfetch(interaction: discord.Interaction):
     app_commands.Choice(name="recruitment", value="recruitment"),
     app_commands.Choice(name="recruitment session", value="recruitmentsession"),
     app_commands.Choice(name="rally", value="rally"),
-    app_commands.Choice(name="rally with over 5 people", value="rallyX5"),
+    app_commands.Choice(name="rally with 5 or more people", value="rallyX5"),
     app_commands.Choice(name="patrol", value="patrol"),
     app_commands.Choice(name="gamenight", value="gamenight"),
     app_commands.Choice(name="training", value="training"),
