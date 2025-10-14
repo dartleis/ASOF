@@ -78,6 +78,17 @@ class DiscordConsoleForwarder:
                     text = text[:1900] + "..."
                 await channel.send(f"```\n{text}\n```")
 
+async def rank_autocomplete(
+    interaction: discord.Interaction,
+    current: str
+) -> list[app_commands.Choice[str]]:
+    ranks = list_rank_names()
+    choices = [app_commands.Choice(name=r, value=r) for r in ranks if current.lower() in r.lower()]
+    # Add "Add New" option
+    if "add new".startswith(current.lower()):
+        choices.insert(0, app_commands.Choice(name="➕ Add New", value="__add_new__"))
+    return choices[:25]
+
 class RankAddModal(discord.ui.Modal, title="Add New Rank"):
     rank_name = discord.ui.TextInput(label="Rank Name", placeholder="e.g. Sergeant")
     role_id = discord.ui.TextInput(label="Role ID", placeholder="123456789012345678")
