@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 
 # Constants
 POINTS_FILE = "points.json"
-VALUES_FILE = "values.json"
+CONFIG_FILE = "config.json"
 JSON_CLEANUP_INTERVAL = 12  # hours
 REMOVE_AFTER_DAYS = 30  # days
 
@@ -127,7 +127,7 @@ def privileged_check(group: str = None, target_param: str | list[str] = None):
         if target_param:
             names = [target_param] if isinstance(target_param, str) else target_param
             for name in names:
-                target = getattr(interaction, name, None)
+                target = getattr(interaction.namespace, name, None)
                 if isinstance(target, discord.User):
                     target = interaction.guild.get_member(target.id)
                 if isinstance(target, discord.Member):
@@ -155,8 +155,76 @@ def privileged_check(group: str = None, target_param: str | list[str] = None):
     return app_commands.check(predicate)
 
 """
-POINTS AND VALUES
+POINTS AND CONFIG
 """
+
+def edit_rank(name: str, role_id: int, points_required: int, requires_roles: list[int]):
+    data = load_config()
+    data["ranks"][name] = {
+        "role_id": role_id,
+        "points_required": points_required,
+        "requires_roles": requires_roles
+    }
+    save_config(data)
+
+def remove_rank(name: str):
+    data = load_config()
+    if name in data["ranks"]:
+        del data["ranks"][name]
+        save_config(data)
+        return True
+    return False
+
+def list_rank_names():
+    return list(load_ranks().keys())
+
+async def rank_autocomplete(
+    interaction: discord.Interaction,
+    current: str
+) -> list[app_commands.Choice[str]]:
+    ranks = list_rank_names()
+    choices = [app_commands.Choice(name=r, value=r) for r in ranks if current.lower() in r.lower()]
+    # Add "Add New" option
+    if "add new".startswith(current.lower()):
+        choices.insert(0, app_commands.Choice(name="➕ Add New", value="__add_new__"))
+    return choices[:25]
+
+class RankEditModal(discord.ui.Modal, title="Add or Edit Rank"):
+    def __init__(self, name: str = "", role_id: str = "", points_required: str = "", requires_roles: str = ""):
+        super().__init__()
+        self.rank_name = discord.ui.TextInput(label="Rank Name", default=name)
+        self.role_id = discord.ui.TextInput(label="Role ID", default=role_id)
+        self.points_required = discord.ui.TextInput(label="Points Required", default=points_required)
+        self.requires_roles = discord.ui.TextInput(
+            label="Required Roles (comma-separated IDs)",
+            default=requires_roles,
+            required=False
+        )
+        self.add_item(self.rank_name)
+        self.add_item(self.role_id)
+        self.add_item(self.points_required)
+        self.add_item(self.requires_roles)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            name = self.rank_name.value.strip()
+            role_id = int(self.role_id.value.strip())
+            points_req = int(self.points_required.value.strip())
+            requires = (
+                [int(x.strip()) for x in self.requires_roles.value.split(",") if x.strip()]
+                if self.requires_roles.value.strip()
+                else []
+            )
+            edit_rank(name, role_id, points_req, requires)
+            await interaction.response.send_message(
+                f"✅ Rank **{name}** saved successfully.",
+                ephemeral=True
+            )
+        except Exception as e:
+            await interaction.response.send_message(
+                f"❌ Error: {e}", ephemeral=True
+            )
+
 
 def load_points():
     data = load_json(POINTS_FILE, {})
@@ -170,9 +238,8 @@ def save_points(data):
         info["points"] = tidy_number(info.get("points", 0))
     save_json(POINTS_FILE, data)
 
-
 def load_values():
-    defaults = {
+    default_values = {
         "ad": 0,
         "adX3": 0,
         "recruitment": 0,
@@ -195,15 +262,57 @@ def load_values():
         "goldbar": 0,
         "trainee": 0,
         "visitortransport": 0,
-        "pizzadelivery": 0,
+        "pizzadelivery": 0
     }
-    return load_json(VALUES_FILE, defaults)
+    if not os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "w") as f:
+            json.dump({"values": default_values, "ranks": {}}, f, indent=4)
+    with open(CONFIG_FILE, "r") as f:
+        data = json.load(f)
+    if "values" not in data:
+        data["values"] = default_values
+    for key, val in default_values.items():
+        if key not in data["values"]:
+            data["values"][key] = val
+    for key in data["values"]:
+        data["values"][key] = tidy_number(data["values"][key])
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(data, f, indent=4)
 
+    return data["values"]
 
-def save_values(data):
-    for k in data:
-        data[k] = tidy_number(data[k])
-    save_json(VALUES_FILE, data)
+def load_config():
+    if not os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "w") as f:
+            json.dump({"values": {}, "ranks": {}}, f, indent=4)
+    with open(CONFIG_FILE, "r") as f:
+        return json.load(f)
+
+def save_config(data):
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+def get_value(key: str):
+    return load_config()["values"].get(key, 0)
+
+def set_value(key: str, value: float):
+    data = load_config()
+    if "values" not in data:
+        data["values"] = {}
+    data["values"][key] = tidy_number(value)
+    save_config(data)
+
+def load_ranks():
+    return load_config().get("ranks", {})
+
+def add_rank(name: str, role_id: int, points_required: int, requires_roles: list[int]):
+    data = load_config()
+    data["ranks"][name] = {
+        "role_id": role_id,
+        "points_required": points_required,
+        "requires_roles": requires_roles
+    }
+    save_config(data)
 
 """
 POINTS HELPERS
@@ -226,17 +335,6 @@ def set_points(uid: int, amount: int):
     entry["points"] = amount
     save_points(data)
 
-
-def get_value(key: str):
-    return load_values().get(key, 0)
-
-
-def set_value(key: str, value: float):
-    data = load_values()
-    data[key.replace(" ", "")] = value
-    save_values(data)
-
-
 """
 SETUP
 """
@@ -250,9 +348,11 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 points_group = app_commands.Group(name="points", description="EXP system")
 log_group = app_commands.Group(name="log", description="Logging actions")
 stats_group = app_commands.Group(name="stats", description="Bot statistics")
+config_group = app_commands.Group(name="config", description="Bot configuration")
 bot.tree.add_command(points_group)
 bot.tree.add_command(log_group)
 bot.tree.add_command(stats_group)
+bot.tree.add_command(config_group)
 
 """
 EVENTS
@@ -337,9 +437,9 @@ async def fastfetch_cmd(interaction: discord.Interaction):
     await interaction.response.send_message(f"```\n{get_fastfetch()}\n```")
 
 
-# Code for /config
-@bot.tree.command(
-    name="config", description="configures the points values of different actions"
+# /config values
+@config_group.command(
+    name="values", description="configures the points values of different actions"
 )
 @privileged_check("config")
 @app_commands.describe(
@@ -380,7 +480,7 @@ async def fastfetch_cmd(interaction: discord.Interaction):
         app_commands.Choice(name="leaderboard pizza delivered", value="pizzadelivery"),
     ]
 )
-async def config(
+async def config_values(
     interaction: discord.Interaction, type: app_commands.Choice[str], value: float
 ):
     set_value(type.value, value)
@@ -388,11 +488,65 @@ async def config(
         f"Set value of **{type.value}** to **{get_value(type.value)}**"
     )
 
+# /config ranks
+@config_group.command(name="ranks", description="Add or edit a rank")
+@privileged_check("config")
+@app_commands.autocomplete(rank=rank_autocomplete)
+@app_commands.describe(rank="Select a rank to edit or 'Add New'")
+async def config_ranks_edit(interaction: discord.Interaction, rank: str):
+    if rank == "__add_new__":
+        # Empty modal for new rank
+        await interaction.response.send_modal(RankEditModal())
+    else:
+        ranks = load_ranks()
+        r = ranks.get(rank, {})
+        modal = RankEditModal(
+            name=rank,
+            role_id=str(r.get("role_id", "")),
+            points_required=str(r.get("points_required", "")),
+            requires_roles=",".join(str(x) for x in r.get("requires_roles", []))
+        )
+        await interaction.response.send_modal(modal)
+
+@config_group.command(name="ranks_remove", description="Remove a rank")
+@privileged_check("config")
+@app_commands.autocomplete(rank=rank_autocomplete)
+@app_commands.describe(rank="Select rank to remove")
+async def config_ranks_remove(interaction: discord.Interaction, rank: str):
+    if rank == "__add_new__":
+        await interaction.response.send_message("❌ You can't remove 'Add New'.", ephemeral=True)
+        return
+
+    if remove_rank(rank):
+        await interaction.response.send_message(f"Removed rank **{rank}**", ephemeral=True)
+    else:
+        await interaction.response.send_message(f"Rank **{rank}** not found.", ephemeral=True)
+
+@stats_group.command(name="ranks", description="List all ranks and their requirements")
+async def config_ranks_list(interaction: discord.Interaction):
+    ranks = load_ranks()
+    if not ranks:
+        await interaction.response.send_message("ℹ️ No ranks configured yet.", ephemeral=True)
+        return
+
+    embed = discord.Embed(title="Configured Ranks", color=discord.Color.blurple())
+    for name, info in ranks.items():
+        embed.add_field(
+            name=f"{name} (<@&{info['role_id']}>)",
+            value=(
+                f"**Points:** {info['points_required']}\n"
+                f"**Required Roles:** {', '.join(f'<@&{r}>' for r in info['requires_roles']) or 'None'}"
+            ),
+            inline=False
+        )
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
 
 # /points check command
 @points_group.command(
     name="check", description="Check the points of you or another member"
 )
+
 @app_commands.describe(user="User to check (optional)")
 async def points_check(interaction: discord.Interaction, user: discord.User = None):
     target = user or interaction.user
