@@ -9,6 +9,7 @@ import subprocess
 import re
 import sys
 from datetime import datetime, timedelta
+import functools
 
 # Constants
 POINTS_FILE = "points.json"
@@ -27,7 +28,7 @@ chiefoflogistics_id = 1382165273049694299
 logistics_id = 1383446002182262856
 contractofficer_id = 1406564078666649660
 nameplatedesigner_id = 1405169617751638076
-booster_id = 1385279332049485935
+booster_id = 1353100755338530889
 
 ALWAYS_PRIVILEGED_ROLE_IDS = [test_id, commander_id, chiefofstaff_id]
 ALWAYS_PRIVILEGED_USER_IDS = [805175554209873940]
@@ -336,6 +337,85 @@ def set_points(uid: int, amount: int):
     save_points(data)
 
 """
+CHECK FOR PROMOTIONS
+"""
+
+async def check_for_promotion(member: discord.Member):
+    points = get_points(member.id)
+    ranks = load_ranks()
+    user_role_ids = [r.id for r in member.roles]
+
+    sorted_ranks = sorted(
+        ranks.items(),
+        key=lambda x: x[1]["points_required"], reverse=True
+    )
+
+    current_highest_rank_points = 0
+    for name, info in sorted_ranks:
+        if info["role_id"] in user_role_ids:
+            if info["points_required"] > current_highest_rank_points:
+                current_highest_rank_points = info["points_required"]
+
+    for name, info in sorted_ranks:
+        required_points = info["points_required"]
+        required_roles = info["requires_roles"]
+        role_id = info["role_id"]
+
+        if current_highest_rank_points > required_points:
+            continue
+
+        if (
+            points >= required_points and
+            all(rid in user_role_ids for rid in required_roles) and
+            role_id not in user_role_ids
+        ):
+            return name
+
+    return None
+
+def promotion_check(_func=None, *, target_param: str = "user"):
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(interaction: discord.Interaction, *args, **kwargs):
+            # Run the command logic — should return the base msg string
+            base_msg = await func(interaction, *args, **kwargs)
+            if not isinstance(base_msg, str):
+                base_msg = ""
+
+            # Get target user
+            target = kwargs.get(target_param, None)
+            if not target and len(args) > 0:
+                target = args[0]
+
+            if not isinstance(target, (discord.User, discord.Member)):
+                await interaction.response.send_message(base_msg)
+                return
+
+            member = interaction.guild.get_member(target.id)
+            if not member:
+                await interaction.response.send_message(base_msg)
+                return
+
+            # Check for promotion
+            promotion_due = await check_for_promotion(member)
+            if promotion_due:
+                base_msg += f"\n**{member.mention}** is due for promotion to **{promotion_due}**."
+
+            await interaction.response.send_message(base_msg, allowed_mentions=discord.AllowedMentions.none())
+
+        return wrapper
+
+    if _func is not None:
+        return decorator(_func)
+    return decorator
+
+
+    # Handle both @promotion_check and @promotion_check(...)
+    if _func is not None:
+        return decorator(_func)
+    return decorator
+
+"""
 SETUP
 """
 
@@ -568,15 +648,15 @@ async def points_check(interaction: discord.Interaction, user: discord.User = No
 # /points add command
 @points_group.command(name="add", description="Add points to a user")
 @privileged_check("logistics")
+@promotion_check
 @app_commands.describe(user="User to add points to", amount="How many points to add")
 async def points_add(
     interaction: discord.Interaction, user: discord.User, amount: float
 ):
     add_points(user.id, amount)
     amount = tidy_number(amount)
-    await interaction.response.send_message(
-        f"Added **{amount}** points to **{user.display_name}**, bringing their total to **{get_points(user.id)}**."
-    )
+    msg = f"Added **{amount}** points to **{user.mention}**, bringing their total to **{get_points(user.id)}**."
+    return msg
 
 
 # /points subtract command
@@ -598,6 +678,7 @@ async def points_subtract(
 # /points set command
 @points_group.command(name="set", description="Set the points of a user")
 @privileged_check("logistics")
+@promotion_check
 @app_commands.describe(
     user="User to set the points of", amount="Amount of points to set"
 )
@@ -606,9 +687,8 @@ async def points_set(
 ):
     set_points(user.id, amount)
     amount = tidy_number(amount)
-    await interaction.response.send_message(
-        f"Set the points of **{user.display_name}** to **{amount}**"
-    )
+    msg = f"Set the points of **{user.mention}** to **{amount}**"
+    return msg
 
 
 # /log event
@@ -637,6 +717,7 @@ async def points_set(
         app_commands.Choice(name="Hosting", value="hosting"),
     ]
 )
+@promotion_check
 async def event(
     interaction: discord.Interaction,
     user: discord.User,
@@ -657,14 +738,14 @@ async def event(
         booster_bonus = get_value("booster")
         added += booster_bonus
     add_points(user.id, added)
-    msg = f"Added **{added}** points to **{user.display_name}** for {attendance_type.name.lower().replace(" ", "-")} a **{event_type.name}**."
+    msg = f"Added **{added}** points to **{user.mention}** for {attendance_type.name.lower().replace(" ", "-")} a **{event_type.name}**."
 
     if booster_bonus > 0:  # Checks if member is a server booster
         msg += f"\n<:booster_icon:1425732545986822164> That includes an extra **{booster_bonus}** points for being a **Server Booster**! Thank you for supporting the division!"
 
     msg += f"\nThey now have **{get_points(user.id)}** points."
 
-    await interaction.response.send_message(msg)
+    return msg
 
 
 # /log recruitment command
@@ -677,16 +758,15 @@ async def event(
     user="User who recruited someone",
     amount="How many people were recruited (Optional)",
 )
+@promotion_check
 async def recruitment(
     interaction: discord.Interaction, user: discord.User, amount: int = 1
 ):
     added = get_value("recruitment") * amount
     add_points(user.id, added)
-    await interaction.response.send_message(
-        f"Added **{added}** points to **{user.display_name}** for **recruiting** **{amount}** members.\n"
-        f" They now have **{get_points(user.id)}** points."
-    )
-
+    msg = f"Added **{added}** points to **{user.mention}** for **recruiting** **{amount}** members.\n"
+    msg += f" They now have **{get_points(user.id)}** points."
+    return msg
 
 # /log rally command
 @log_group.command(
@@ -704,6 +784,7 @@ async def recruitment(
         app_commands.Choice(name="1 PM rally", value="1pm"),
     ]
 )
+@promotion_check
 async def rally(
     interaction: discord.Interaction,
     user: discord.User,
@@ -715,10 +796,9 @@ async def rally(
     else:
         added = get_value("rally")
     add_points(user.id, added)
-    await interaction.response.send_message(
-        f"Added **{added}** points to **{user.display_name}** for representing ASOF at the **{rally.name}** with {str(amount_attendees - 1).replace("-1", "0")} other{"" if amount_attendees == 1 else "1"}."
-        f"\nThey now have **{get_points(user.id)}** points"
-    )
+    msg = f"Added **{added}** points to **{user.mention}** for representing ASOF at the **{rally.name}** with {str(amount_attendees - 1).replace("-1", "0")} other{"" if amount_attendees == 1 else "1"}."
+    msg += f"\nThey now have **{get_points(user.id)}** points"
+    return msg
 
 
 # /log leaderboard command
@@ -742,6 +822,7 @@ async def rally(
         app_commands.Choice(name="Base Commander Elimination", value="basecommander"),
     ]
 )
+@promotion_check
 async def log_leaderboard(
     interaction: discord.Interaction,
     user: discord.User,
@@ -750,7 +831,7 @@ async def log_leaderboard(
 ):
     added = get_value(task.value) * amount
     add_points(user.id, added)
-    msg = f"Added **{added}** points to **{user.name}** for "
+    msg = f"Added **{added}** points to **{user.mention}** for "
     if task.value == "visitortransport":
         msg += f"transporting **{amount}** visitor{"" if amount == 1 else "1"}."
     elif task.value == "pizzadelivery":
@@ -763,9 +844,8 @@ async def log_leaderboard(
         msg += f"training **{amount}** trainee{"" if amount == 1 else "s"}."
     else:
         msg += f"Eliminating **{amount}** Base Commander{"s" if amount > 1 else ""}."
-    await interaction.response.send_message(
-        f"{msg}" f"\nThey now have **{get_points(user.id)}** points"
-    )
+    msg += f"\nThey now have **{get_points(user.id)}** points"
+    return msg
 
 
 @log_group.command(
@@ -778,15 +858,15 @@ async def log_leaderboard(
 )
 @privileged_check("logistics")
 @privileged_check("nameplatedesigner", target_param="user")
+@promotion_check
 async def nameplate(
     interaction: discord.Interaction, user: discord.User, amount: int = 1
 ):
     added = get_value("nameplate") * amount
     add_points(user.id, added)
-    await interaction.response.send_message(
-        f"Added **{added}** points to **{user.name}** for designing **{amount}** nameplate{"" if amount == 1 else "s"}."
-        f"\nThey now have **{get_points(user.id)}** points"
-    )
+    msg = f"Added **{added}** points to **{user.name}** for designing **{amount}** nameplate{"" if amount == 1 else "s"}."
+    msg += f"\nThey now have **{get_points(user.id)}** points"
+    return msg
 
 """
 POINTS LEADERBOARD
