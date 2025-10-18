@@ -28,7 +28,7 @@ chiefoflogistics_id = 1382165273049694299
 logistics_id = 1383446002182262856
 contractofficer_id = 1406564078666649660
 nameplatedesigner_id = 1405169617751638076
-booster_id = 1353100755338530889
+booster_id = 1385279332049485935
 
 ALWAYS_PRIVILEGED_ROLE_IDS = [test_id, commander_id, chiefofstaff_id]
 ALWAYS_PRIVILEGED_USER_IDS = [805175554209873940]
