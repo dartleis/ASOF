@@ -59,8 +59,7 @@ class DiscordConsoleForwarder:
         ):
             self.queue.put_nowait(message)
 
-    def flush(self):
-        self.original_stream.flush()
+1        self.original_stream.flush()
 
     async def start_flusher(self):
         while True:
@@ -626,23 +625,17 @@ async def config_ranks_list(interaction: discord.Interaction):
 @points_group.command(
     name="check", description="Check the points of you or another member"
 )
-
 @app_commands.describe(user="User to check (optional)")
+@promotion_check
 async def points_check(interaction: discord.Interaction, user: discord.User = None):
     target = user or interaction.user
     points = get_points(target.id)
     if points >= 5000:
-        await interaction.response.send_message(
-            f"🤑 **{target.display_name}** has **{points}** points."
-        )
+        msg = "🤑 "
     elif points == 100:
-        await interaction.response.send_message(
-            f"💯 **{target.display_name}** has **{points}** points."
-        )
-    else:
-        await interaction.response.send_message(
-            f"**{target.display_name}** has **{points}** points."
-        )
+       msg = "💯"
+    msg += f"**{target.mention}** has **{points}** points."
+    return msg
 
 
 # /points add command
@@ -967,3 +960,7 @@ with open(
     token = file.read().strip()
 
 bot.run(token)
+
+
+
+# Wow 1000 lines 🤯
