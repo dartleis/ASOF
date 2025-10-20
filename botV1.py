@@ -440,7 +440,6 @@ bot.tree.add_command(config_group)
 EVENTS
 """
 
-
 @bot.event
 async def on_member_join(member):
     data = load_points()
@@ -600,7 +599,7 @@ async def config_ranks_remove(interaction: discord.Interaction, rank: str):
         return
 
     if remove_rank(rank):
-        await interaction.response.send_message(f"Removed rank **{rank}**", ephemeral=True)
+        await interaction.response.send_message(f"Removed rank **{rank}**")
     else:
         await interaction.response.send_message(f"Rank **{rank}** not found.", ephemeral=True)
 
@@ -608,20 +607,20 @@ async def config_ranks_remove(interaction: discord.Interaction, rank: str):
 async def config_ranks_list(interaction: discord.Interaction):
     ranks = load_ranks()
     if not ranks:
-        await interaction.response.send_message("ℹ️ No ranks configured yet.", ephemeral=True)
+        await interaction.response.send_message("No ranks configured yet.", ephemeral=True)
         return
 
-    embed = discord.Embed(title="Configured Ranks", color=discord.Color.blurple())
-    for name, info in ranks.items():
-        embed.add_field(
-            name=f"{name} (<@&{info['role_id']}>)",
-            value=(
-                f"**Points:** {info['points_required']}\n"
-                f"**Required Roles:** {', '.join(f'<@&{r}>' for r in info['requires_roles']) or 'None'}"
-            ),
-            inline=False
-        )
-    await interaction.response.send_message(embed=embed, ephemeral=True)
+msg = "**Configured Ranks:**\n\n"
+for name, info in ranks.items():
+    required_roles = ', '.join(f"<@&{r}>" for r in info['requires_roles']) or "None"
+    msg += (
+        f"**{name} (<@&{info['role_id']}>)**\n"
+        f"Points: {info['points_required']}\n"
+        f"Required Roles: {required_roles}\n\n"
+    )
+
+await interaction.response.send_message(msg, ephemeral=True)
+
 
 
 # /points check command
@@ -838,7 +837,7 @@ async def log_leaderboard(
         msg += f"stealing **{amount}** gold bar{"" if amount == 1 else "s"}."
     elif task.value == "trainee":
         msg += f"training **{amount}** trainee{"" if amount == 1 else "s"}."
-    else:
+    elif task.value == "basecommander":
         msg += f"Eliminating **{amount}** Base Commander{"s" if amount > 1 else ""}."
     msg += f"\nThey now have **{get_points(user.id)}** points"
     return msg
