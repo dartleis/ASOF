@@ -38,7 +38,10 @@ PRIVILEGE_GROUP_ROLE_IDS = {
     "nameplatedesigner": [nameplatedesigner_id],
 }
 
-# Console Forwarder
+"""
+CONSOLE FORWARDER
+"""
+
 CONSOLE_CHANNEL = 1427442431682543707
 
 
@@ -426,7 +429,7 @@ intents.guilds = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 points_group = app_commands.Group(name="points", description="EXP system")
 log_group = app_commands.Group(name="log", description="Logging actions")
-stats_group = app_commands.Group(name="stats", description="Bot statistics")
+stats_group = app_commands.Group(name="stats", ="Bot statistics")
 config_group = app_commands.Group(name="config", description="Bot configuration")
 bot.tree.add_command(points_group)
 bot.tree.add_command(log_group)
@@ -664,7 +667,7 @@ async def points_subtract(
     add_points(user.id, -abs(amount))
     amount = tidy_number(amount)
     await interaction.response.send_message(
-        f"Removed **{abs(amount)}** points from **{user.display_name}**, bringing their total to **{get_points(user.id)}**."
+        f"Removed **{abs(amount)}** points from **{user.mention}**, bringing their total to **{get_points(user.id)}**."
     )
 
 
@@ -857,7 +860,7 @@ async def nameplate(
 ):
     added = get_value("nameplate") * amount
     add_points(user.id, added)
-    msg = f"Added **{added}** points to **{user.name}** for designing **{amount}** nameplate{"" if amount == 1 else "s"}."
+    msg = f"Added **{added}** points to **{user.mention}** for designing **{amount}** nameplate{"" if amount == 1 else "s"}."
     msg += f"\nThey now have **{get_points(user.id)}** points"
     return msg
 
@@ -904,7 +907,6 @@ async def leaderboard(interaction: discord.Interaction, page: str):
 
     per_page = 10
     total_pages = (len(leaderboard_list) + per_page - 1) // per_page
-
     # If "all" is chosen
     if page.lower() == "all":
         display_list = leaderboard_list
@@ -930,17 +932,15 @@ async def leaderboard(interaction: discord.Interaction, page: str):
         end_index = start_index + per_page
         display_list = leaderboard_list[start_index:end_index]
         ephemeral = False
-
     # Build leaderboard text
     lines = []
     rank_offset = 0 if page.lower() == "all" else (per_page * (page_num - 1))
     for rank, (user_id, points) in enumerate(display_list, start=1 + rank_offset):
         member = members.get(str(user_id))
-        name = member.display_name if member else f"Unknown User ({user_id})"
+        name = member.mention if member else f"Unknown User ({user_id})"
         points_display = int(points) if float(points).is_integer() else points
         lines.append(f"**#{rank}** — {name}: {points_display} points")
 
-    # Title
     if page.lower() == "all":
         title = f"🏆 Full Leaderboard — {len(leaderboard_list)} players"
     else:
@@ -960,7 +960,3 @@ with open(
     token = file.read().strip()
 
 bot.run(token)
-
-
-
-# Wow 1000 lines 🤯
