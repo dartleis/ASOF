@@ -39,49 +39,6 @@ PRIVILEGE_GROUP_ROLE_IDS = {
 }
 
 """
-CONSOLE FORWARDER
-"""
-
-CONSOLE_CHANNEL = 1427442431682543707
-
-
-class DiscordConsoleForwarder:
-    def __init__(self, bot, channel_id, original_stream, buffer_time=3):
-        self.bot = bot
-        self.channel_id = channel_id
-        self.original_stream = original_stream
-        self.queue = asyncio.Queue()
-        self.buffer_time = buffer_time
-
-    def write(self, message):
-        self.original_stream.write(message)
-        self.original_stream.flush()
-        if (
-            message.strip()
-            and "discord.app_commands.errors.CheckFailure" not in message
-        ):
-            self.queue.put_nowait(message)
-
-1        self.original_stream.flush()
-
-    async def start_flusher(self):
-        while True:
-            await asyncio.sleep(self.buffer_time)
-            if self.queue.empty():
-                continue
-
-            msgs = []
-            while not self.queue.empty():
-                msgs.append(await self.queue.get())
-
-            channel = self.bot.get_channel(self.channel_id)
-            if channel:
-                text = "".join(msgs)
-                if len(text) > 1900:
-                    text = text[:1900] + "..."
-                await channel.send(f"```\n{text}\n```")
-
-"""
 UTILITY FUNCTIONS
 """
 
@@ -219,14 +176,12 @@ class RankEditModal(discord.ui.Modal, title="Add or Edit Rank"):
                 else []
             )
             edit_rank(name, role_id, points_req, requires)
-            await interaction.response.send_message(
-                f"✅ Rank **{name}** saved successfully.",
-                ephemeral=True
+            msg = f"✅ Rank **{name}** saved successfully."
+            await interaction.response.send_message(msg, ephemeral=True
             )
         except Exception as e:
-            await interaction.response.send_message(
-                f"❌ Error: {e}", ephemeral=True
-            )
+            msg = f"❌ Error: {e}"
+            await interaction.response.send_message(msg, ephemeral=True)
 
 
 def load_points():
@@ -404,6 +359,7 @@ def promotion_check(_func=None, *, target_param: str = "user"):
                 base_msg += f"\n**{member.mention}** is due for promotion to **{promotion_due}**."
 
             await interaction.response.send_message(base_msg, allowed_mentions=discord.AllowedMentions.none())
+            print(base_msg)
 
         return wrapper
 
@@ -480,15 +436,6 @@ async def cleanup_inactive_users():
 
 @bot.event
 async def on_ready():
-    global stdout_forwarder, stderr_forwarder
-    stdout_forwarder = DiscordConsoleForwarder(bot, CONSOLE_CHANNEL, sys.__stdout__)
-    stderr_forwarder = DiscordConsoleForwarder(bot, CONSOLE_CHANNEL, sys.__stderr__)
-    sys.stdout, sys.stderr = stdout_forwarder, stderr_forwarder
-    bot.loop.create_task(stdout_forwarder.start_flusher())
-    bot.loop.create_task(stderr_forwarder.start_flusher())
-
-    print("Console forwarding active.")
-    print(get_fastfetch())
     print(f"Logged in as {bot.user}")
 
     try:
@@ -507,15 +454,17 @@ COMMANDS
 # /stats ping
 @stats_group.command(name="ping", description="Check the bot latency.")
 async def ping(interaction: discord.Interaction):
-    await interaction.response.send_message(
-        f"Pong! {round(bot.latency * 1000)}ms", ephemeral=True
-    )
+    msg = f"Pong! {round(bot.latency * 1000)}ms"
+    await interaction.response.send_message(msg, ephemeral=True)
+    print(msg)
 
 
 # /stats fastfetch
 @stats_group.command(name="fastfetch", description="Display system info.")
 async def fastfetch_cmd(interaction: discord.Interaction):
-    await interaction.response.send_message(f"```\n{get_fastfetch()}\n```")
+    msg = f"```\n{get_fastfetch()}\n```"
+    await interaction.response.send_message()
+    print(msg)
 
 
 # /config values
@@ -565,9 +514,9 @@ async def config_values(
     interaction: discord.Interaction, type: app_commands.Choice[str], value: float
 ):
     set_value(type.value, value)
-    await interaction.response.send_message(
-        f"Set value of **{type.value}** to **{get_value(type.value)}**"
-    )
+    msg = f"Set value of **{type.value}** to **{get_value(type.value)}**"
+    await interaction.response.send_message(msg)
+    print(msg)
 
 # /config ranks
 @config_group.command(name="ranks", description="Add or edit a rank")
@@ -595,19 +544,27 @@ async def config_ranks_edit(interaction: discord.Interaction, rank: str):
 @app_commands.describe(rank="Select rank to remove")
 async def config_ranks_remove(interaction: discord.Interaction, rank: str):
     if rank == "__add_new__":
-        await interaction.response.send_message("No", ephemeral=True)
+        msg = "No"
+        await interaction.response.send_message(msg, ephemeral=True)
+        print(msg)
         return
 
     if remove_rank(rank):
-        await interaction.response.send_message(f"Removed rank **{rank}**")
+        msg = f"Removed rank **{rank}**"
+        await interaction.response.send_message(msg)
+        print(msg)
     else:
-        await interaction.response.send_message(f"Rank **{rank}** not found.", ephemeral=True)
+        msg = f"Rank **{rank}** not found."
+        await interaction.response.send_message(msg, ephemeral=True)
+        print(msg)
 
 @stats_group.command(name="ranks", description="List all ranks and their requirements")
 async def config_ranks_list(interaction: discord.Interaction):
     ranks = load_ranks()
     if not ranks:
-        await interaction.response.send_message("No ranks configured yet.", ephemeral=True)
+        msg = "No ranks configured yet."
+        await interaction.response.send_message(msg, ephemeral=True)
+        print(msg)
         return
 
 msg = "**Configured Ranks:**\n\n"
@@ -620,6 +577,7 @@ for name, info in ranks.items():
     )
 
 await interaction.response.send_message(msg, ephemeral=True)
+print(msg)
 
 
 
@@ -665,10 +623,9 @@ async def points_subtract(
 ):
     add_points(user.id, -abs(amount))
     amount = tidy_number(amount)
-    await interaction.response.send_message(
-        f"Removed **{abs(amount)}** points from **{user.mention}**, bringing their total to **{get_points(user.id)}**."
-    )
-
+    msg = f"Removed **{abs(amount)}** points from **{user.mention}**, bringing their total to **{get_points(user.id)}**."
+    await interaction.response.send_message(msg)
+    print(msg)
 
 # /points set command
 @points_group.command(name="set", description="Set the points of a user")
