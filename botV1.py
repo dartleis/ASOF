@@ -625,7 +625,7 @@ async def points_subtract(
     add_points(user.id, -abs(amount))
     amount = tidy_number(amount)
     msg = f"Removed **{abs(amount)}** points from **{user.mention}**, bringing their total to **{get_points(user.id)}**."
-    await interaction.response.send_message(msg)
+    await interaction.response.send_message(msg, allowed_mentions=discord.AllowedMentions.none())
     print(msg)
 
 # /points set command
