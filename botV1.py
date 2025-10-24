@@ -385,7 +385,7 @@ intents.guilds = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 points_group = app_commands.Group(name="points", description= "EXP system")
 log_group = app_commands.Group(name="log", description= "Logging actions")
-stats_group = app_commands.Group(name="stats", "Bot statistics")
+stats_group = app_commands.Group(name="stats", description= "Bot statistics")
 config_group = app_commands.Group(name="config", description="Bot configuration")
 bot.tree.add_command(points_group)
 bot.tree.add_command(log_group)
