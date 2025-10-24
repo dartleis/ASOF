@@ -567,17 +567,17 @@ async def config_ranks_list(interaction: discord.Interaction):
         print(msg)
         return
 
-msg = "**Configured Ranks:**\n\n"
-for name, info in ranks.items():
-    required_roles = ', '.join(f"<@&{r}>" for r in info['requires_roles']) or "None"
-    msg += (
-        f"**{name} (<@&{info['role_id']}>)**\n"
-        f"Points: {info['points_required']}\n"
-        f"Required Roles: {required_roles}\n\n"
+    msg = "**Configured Ranks:**\n\n"
+    for name, info in ranks.items():
+        required_roles = ', '.join(f"<@&{r}>" for r in info['requires_roles']) or "None"
+        msg += (
+            f"**{name} (<@&{info['role_id']}>)**\n"
+            f"Points: {info['points_required']}\n"
+            f"Required Roles: {required_roles}\n\n"
     )
 
-await interaction.response.send_message(msg, ephemeral=True)
-print(msg)
+    await interaction.response.send_message(msg, ephemeral=True)
+    print(msg)
 
 
 
@@ -590,6 +590,7 @@ print(msg)
 async def points_check(interaction: discord.Interaction, user: discord.User = None):
     target = user or interaction.user
     points = get_points(target.id)
+    msg = ""
     if points >= 5000:
         msg = "🤑 "
     elif points == 100:
