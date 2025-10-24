@@ -427,9 +427,9 @@ intents.members = True
 intents.guilds = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
-points_group = app_commands.Group(name="points", description="EXP system")
-log_group = app_commands.Group(name="log", description="Logging actions")
-stats_group = app_commands.Group(name="stats", ="Bot statistics")
+points_group = app_commands.Group(name="points", description= "EXP system")
+log_group = app_commands.Group(name="log", description= "Logging actions")
+stats_group = app_commands.Group(name="stats", = "Bot statistics")
 config_group = app_commands.Group(name="config", description="Bot configuration")
 bot.tree.add_command(points_group)
 bot.tree.add_command(log_group)
@@ -595,7 +595,7 @@ async def config_ranks_edit(interaction: discord.Interaction, rank: str):
 @app_commands.describe(rank="Select rank to remove")
 async def config_ranks_remove(interaction: discord.Interaction, rank: str):
     if rank == "__add_new__":
-        await interaction.response.send_message("❌ You can't remove 'Add New'.", ephemeral=True)
+        await interaction.response.send_message("No", ephemeral=True)
         return
 
     if remove_rank(rank):
