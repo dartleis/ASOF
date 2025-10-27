@@ -904,7 +904,7 @@ async def leaderboard(interaction: discord.Interaction, page: str):
         title = f"🏆 Leaderboard — Page {page_num}/{total_pages}"
 
     await interaction.response.send_message(
-        f"{title}\n" + "\n".join(lines), ephemeral=ephemeral
+        f"{title}\n" + "\n".join(lines), allowed_mentions=discord.AllowedMentions.none(), ephemeral=ephemeral
     )
 
 """
