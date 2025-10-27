@@ -864,7 +864,8 @@ async def leaderboard(interaction: discord.Interaction, page: str):
 
     per_page = 10
     total_pages = (len(leaderboard_list) + per_page - 1) // per_page
-    # If "all" is chosen
+
+    # Handle 'all' mode
     if page.lower() == "all":
         display_list = leaderboard_list
         ephemeral = True
@@ -874,13 +875,13 @@ async def leaderboard(interaction: discord.Interaction, page: str):
             page_num = int(page)
             if page_num < 1 or page_num > total_pages:
                 await interaction.response.send_message(
-                    f"Invalid page number. There {f"are only **{total_pages}** pages" if total_pages > 1 else f"is only **1** page"}.",
+                    f"Invalid page number. There {'are only **'+str(total_pages)+'** pages' if total_pages > 1 else 'is only **1** page'}.",
                     ephemeral=True,
                 )
                 return
         except ValueError:
             await interaction.response.send_message(
-                f"Page must be {f" a number (1 to {total_pages})" if total_pages > 1 else "1"} or `all`.",
+                f"Page must be {'a number (1 to '+str(total_pages)+')' if total_pages > 1 else '1'} or `all`.",
                 ephemeral=True,
             )
             return
@@ -889,6 +890,7 @@ async def leaderboard(interaction: discord.Interaction, page: str):
         end_index = start_index + per_page
         display_list = leaderboard_list[start_index:end_index]
         ephemeral = False
+
     # Build leaderboard text
     lines = []
     rank_offset = 0 if page.lower() == "all" else (per_page * (page_num - 1))
@@ -903,9 +905,34 @@ async def leaderboard(interaction: discord.Interaction, page: str):
     else:
         title = f"🏆 Leaderboard — Page {page_num}/{total_pages}"
 
+    # Split message into chunks to respect Discord’s 2000-character limit
+    max_length = 1900
+    message = f"{title}\n"
+    chunks = []
+
+    for line in lines:
+        if len(message) + len(line) + 1 > max_length:
+            chunks.append(message)
+            message = ""
+        message += line + "\n"
+    if message:
+        chunks.append(message)
+
+    # Send first chunk as initial response
     await interaction.response.send_message(
-        f"{title}\n" + "\n".join(lines), allowed_mentions=discord.AllowedMentions.none(), ephemeral=ephemeral
+        chunks[0],
+        allowed_mentions=discord.AllowedMentions.none(),
+        ephemeral=ephemeral,
     )
+
+    # Send remaining chunks as followups
+    for chunk in chunks[1:]:
+        await interaction.followup.send(
+            chunk,
+            allowed_mentions=discord.AllowedMentions.none(),
+            ephemeral=ephemeral,
+        )
+
 
 """
 RUN THE BOT
