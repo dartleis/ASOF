@@ -917,4 +917,3 @@ with open(
     token = file.read().strip()
 
 bot.run(token)
-#
