@@ -437,7 +437,7 @@ async def log_auto(interaction: discord.Interaction, link: str):
     # Build the prompt
     with open("prompts.toml", "rb") as f:
         prompts = tomllib.load(f)
-    prompt = (prompts[log_type], prompts["ignore"], f"Sender: {author}", msg_content, prompts["".join(log_type, "_footer")])
+    prompt = (prompts[log_type], prompts["ignore"], f"Sender: {author}", msg_content, prompts[log_type + "_footer"])
     prompt = "\n".join(prompt)
     client = genai.Client(
         api_key=os.getenv("GENAI_API_KEY")
