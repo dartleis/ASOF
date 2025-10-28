@@ -15,6 +15,7 @@ from google import genai
 import re
 import functools
 import tomllib
+from dotenv import load_dotenv
 
 """
 CONSTANTS
@@ -100,14 +101,6 @@ def privileged_check(group: str = None, target_param: str | list[str] = None):
         return True
 
     return app_commands.check(predicate)
-
-"""
-GOOGLE AI SETUP
-"""
-
-client = genai.Client(
-    api_key=os.getenv("GENAI_API_KEY")
-    )
 
 """
 POINTS AND CONFIG
@@ -444,20 +437,21 @@ async def log_auto(interaction: discord.Interaction, link: str):
     # Build the prompt
     with open("propmts.toml", "rb") as f:
         prompts = tomllib.load(f)
-    prompt = (prompts["header"], prompts[log_type], prompts["ignore"], f"Sender: {author}", msg_content, prompts["".join(log_type, "_footer")])
+    prompt = (prompts[log_type], prompts["ignore"], f"Sender: {author}", msg_content, prompts["".join(log_type, "_footer")])
     prompt = "\n".join(prompt)
-    response = client.generate_text(
-    model="gemini-2.5-flash",
-    prompt=prompt
+    client = genai.Client(
+        api_key=os.getenv("GENAI_API_KEY")
+    )
+
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        config=types.GenerateContentConfig(
+            system_instruction=prompts["header"]),
+        contents=prompt
 )
-    ai_output = response.text
-    print(f"AI Output:\n{ai_output}")
+
+    print(response.text)
     
-
-
-
-
-
 """
 RUN BOT
 """
