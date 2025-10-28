@@ -444,7 +444,7 @@ async def log_auto(interaction: discord.Interaction, link: str):
     )
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-2.5-flash-lite",
         config=types.GenerateContentConfig(
             system_instruction=prompts["header"]),
         contents=prompt
