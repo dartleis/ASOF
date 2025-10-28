@@ -5,7 +5,6 @@ from discord.ext import commands, tasks
 import json
 import os
 import asyncio
-import subprocess
 import re
 import sys
 from datetime import datetime, timedelta
@@ -41,15 +40,6 @@ PRIVILEGE_GROUP_ROLE_IDS = {
 """
 UTILITY FUNCTIONS
 """
-
-def get_fastfetch():
-    result = subprocess.run("fastfetch", shell=True, capture_output=True, text=True)
-    output = re.sub(r"\x1B\[[0-?]*[ -/]*[@-~]", "", result.stdout)  # Strip ANSI
-    output = re.sub(
-        r"^Local IP.*$", "Local IP (wlan0): REDACTED", output, flags=re.MULTILINE
-    )
-    return output.replace("pi@raspberrypi", "\npi@raspberrypi", 1)
-
 
 def tidy_number(num):
     return int(num) if isinstance(num, float) and num.is_integer() else num
@@ -457,15 +447,6 @@ async def ping(interaction: discord.Interaction):
     msg = f"Pong! {round(bot.latency * 1000)}ms"
     await interaction.response.send_message(msg, ephemeral=True)
     print(msg)
-
-
-# /stats fastfetch
-@stats_group.command(name="fastfetch", description="Display system info.")
-async def fastfetch_cmd(interaction: discord.Interaction):
-    msg = f"```\n{get_fastfetch()}\n```"
-    await interaction.response.send_message()
-    print(msg)
-
 
 # /config values
 @config_group.command(
