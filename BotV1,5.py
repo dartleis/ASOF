@@ -435,7 +435,7 @@ async def log_auto(interaction: discord.Interaction, link: str):
             log_type = "training"
     
     # Build the prompt
-    with open("propmts.toml", "rb") as f:
+    with open("prompts.toml", "rb") as f:
         prompts = tomllib.load(f)
     prompt = (prompts[log_type], prompts["ignore"], f"Sender: {author}", msg_content, prompts["".join(log_type, "_footer")])
     prompt = "\n".join(prompt)
