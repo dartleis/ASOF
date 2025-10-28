@@ -283,10 +283,6 @@ def promotion_check(_func=None, *, target_param: str = "user"):
 BOT SETUP
 """
 
-"""
-SETUP
-"""
-
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
@@ -299,6 +295,8 @@ stats_group = app_commands.Group(name="stats", description= "Bot statistics")
 bot.tree.add_command(points_group)
 bot.tree.add_command(log_group)
 bot.tree.add_command(stats_group)
+
+load_dotenv()
 
 """
 EVENTS
