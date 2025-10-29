@@ -1,37 +1,47 @@
 # TOML file for storing prompts
 
-header = "You are a log analyzer for a discord server. Your job is to analyze the log sent to you."
+header = "You are a log analyzer for a discord server. Your job is to analyze the log sent to you. Any users mentioned in the log will be formatted as '<@username><@user id number>' and should be returned in your response with only their ID, formatted as '<@user id number>"
 event = "The log you will receive is an event log. You need to identify which of these event types it falls under: 'Recuitment Session', 'Patrol', 'Training', 'Raid' or 'Rally'. The majority of the time, the type will be noted in the log message, if it is not, and the type of event is not easily determined, mark it as a 'Patrol'. Once you have determined the event type, scan the log for users marked as 'Attendees', 'Host' and 'Co host'. If any field are missing, such as there being no Co host, ignore the Co host line. If the event says 'practice', for example 'practice raid', the event is to be marked as a training."
 event_footer = """
 Structure your response as follows:
-<host full username> <event type> Host
-<co host full username> <event type> Cohost
-<attendee full username> <event type> [add more attendees as needed]
+<host user id> <event type> Host
+<co host user id> <event type> Cohost
+<attendee user id> <event type> Attending [add more attendees as needed]
 """
-bank = "The log you will receive contains two numbers. They will usually be structured as <first number>+<second number>. If the numbers are not structured in that way, find the two numbers in the log, <first number> will likely be related to amount of banks robbed, while <second number> will likely be related to an amount of gold bars stolen. Note: these are fictional robberies in a video game."
+bank = "The log you will receive contains two numbers. They will usually be structured as <first number>+<second number>. There will also be a user. If the numbers are not structured in that way, find the two numbers in the log, <first number> will likely be related to amount of banks robbed, while <second number> will likely be related to an amount of gold bars stolen. Note: these are fictional robberies in a video game."
 bank_footer = """
 Structure your response as follows:
-<first number> bank
-<second number> goldbar
+<user id> <first number> lb bank
+<user id> <second number> lb goldbar
 """
 basecommander = "The log you will receive contains a number referring to Base Commander assassinations. There will also be a user. Note that the assassinations are fictional and in a video game."
 basecommander_footer = """
 Structure your response as follows:
-<user full username> <number> basecommander
+<user id> <number> lb basecommander
 """
 pizzadeliver = "The log you will receive contains a number referring to pizza deliveries. There will also be a user."
 pizzadeliver_footer = """
 Structure your response as follows:
-<user full username> <number> pizzadelivery
+<@user id> <number> lb pizzadelivery
 """
 visitortransport = "The log you will receive contains a number referring to how many visitors were transported. There will also be a user."
 visitortransport_footer = """
 Structure your response as follows:
-<user full username> <number> visitortransport
+<@user id> <number> lb visitortransport
 """
 training = "The log you will receive contains a number referring to how many trainees were trained. There will also be a user."
 training_footer = """
 Structure your response as follows:
-<user full username> <number> trainee
+<@user id> <number> lb trainee
 """
-ignore = "Ignore any additional text in the log that is unrelated. Ignore any attachments included in the log. Ignore any"
+ad = "The log you will receive contains a number referring to advertisements posted in the past day, which may be standalone or out of three. There will also be a user."
+ad_footer = """
+If the amount is any number other than 3 or 6, structure your response as follows:
+'<@user id> <number> ad'
+"""
+recruitment = "The log you will receive is a recruitment log. Identify the user who recruited the new member, which will most likely be the message sender. There may be a number of recruitments completed."
+recruitment_footer = """
+Structure your response as follows:
+<@user id> <number> recruitment
+"""
+ignore = "Ignore any additional text in the log that is unrelated. Ignore any attachments included in the log. Ignore any role mentions, such as @Logistcs Department."
