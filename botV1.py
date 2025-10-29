@@ -678,7 +678,6 @@ async def event(
         msg += f"\n<:booster_icon:1425732545986822164> That includes an extra **{booster_bonus}** points for being a **Server Booster**! Thank you for supporting the division!"
 
     msg += f"\nThey now have **{get_points(user.id)}** points."
-
     return msg
 
 
@@ -799,6 +798,25 @@ async def nameplate(
     added = get_value("nameplate") * amount
     add_points(user.id, added)
     msg = f"Added **{added}** points to **{user.mention}** for designing **{amount}** nameplate{"" if amount == 1 else "s"}."
+    msg += f"\nThey now have **{get_points(user.id)}** points"
+    return msg
+
+# Log ad command
+@log_group.command(
+    name="ad", description="Log the points for someone posting an advertisement"
+)
+@privileged_check("logistics")
+@app_commands.describe(user="User who posted the advertisement", amount="Amount of advertisements posted in the past day")
+@promotion_check
+async def log_ad(
+    interaction: discord.Interaction, user: discord.User, amount: int
+    ):
+    if amount == 3 or amount == 6:
+        added = get_value("adX3")
+    else:
+        added = get_value("ad")
+    add_points(user.id, added)
+    msg = f"Added **{added}** points to **{user.mention}** for posting **{amount}** ads in one day"
     msg += f"\nThey now have **{get_points(user.id)}** points"
     return msg
 
