@@ -9,9 +9,12 @@ IMPORTS
 import discord
 from discord import app_commands
 from discord.ext import commands
-import os
+from discord.ui import Button, View
 import json
+import os
+import asyncio
 from google import genai
+from google.genai import types
 import re
 import functools
 import tomllib
@@ -21,6 +24,8 @@ from dotenv import load_dotenv
 CONSTANTS
 """
 
+
+
 POINTS_FILE = "points.json"
 CONFIG_FILE = "config.json"
 
@@ -29,6 +34,7 @@ ROLES AND USER IDS
 """
 
 logistics_id = 1383446002182262856
+booster_id = 1385279332049485935
 
 ALWAYS_PRIVILEGED_ROLE_IDS = []
 ALWAYS_PRIVILEGED_USER_IDS = [805175554209873940]
@@ -378,15 +384,198 @@ async def ping(interaction: discord.Interaction):
     await interaction.response.send_message(msg, ephemeral=True)
     print(msg)
 
+# /log rally command
+@log_group.command(
+    name="rally", description="Log the points for someone attending the weekly rally"
+)
+@privileged_check("logistics")
+@app_commands.describe(
+    user="User who attended the rally",
+    amount_attendees="Amount of total attendees were at the rally",
+    rally="Which rally was attended",
+)
+@app_commands.choices(
+    rally=[
+        app_commands.Choice(name="1 AM rally", value="1am"),
+        app_commands.Choice(name="1 PM rally", value="1pm"),
+    ]
+)
+@promotion_check
+async def rally(
+    interaction: discord.Interaction,
+    user: discord.User,
+    amount_attendees: int,
+    rally: app_commands.Choice[str],
+):
+    if amount_attendees >= 5:
+        added = get_value("rallyX5")
+    else:
+        added = get_value("rally")
+    add_points(user.id, added)
+    msg = f"Added **{added}** points to **{user.mention}** for representing ASOF at the **{rally.name}** with {str(amount_attendees - 1).replace("-1", "0")} other{"" if amount_attendees == 1 else "1"}."
+    msg += f"\nThey now have **{get_points(user.id)}** points"
+    return msg
+
+# /log leaderboard command
+@log_group.command(
+    name="leaderboard",
+    description="Log the points for someone completing leaderboard tasks",
+)
+@privileged_check("logistics")
+@app_commands.describe(
+    user="User who completed the leaderboard task",
+    task="Which leaderboard task was completed",
+    amount="How many times was the task completed",
+)
+@app_commands.choices(
+    task=[
+        app_commands.Choice(name="Visitor Transportation", value="visitortransport"),
+        app_commands.Choice(name="Pizza Delivery", value="pizzadelivery"),
+        app_commands.Choice(name="Bank Robbery", value="bank"),
+        app_commands.Choice(name="Gold Bar Stolen", value="goldbar"),
+        app_commands.Choice(name="Trainee Trained", value="trainee"),
+        app_commands.Choice(name="Base Commander Elimination", value="basecommander"),
+    ]
+)
+@promotion_check
+async def log_leaderboard(
+    interaction: discord.Interaction,
+    user: discord.User,
+    task: app_commands.Choice[str],
+    amount: int = 1,
+):
+    added = get_value(task.value) * amount
+    add_points(user.id, added)
+    msg = f"Added **{added}** points to **{user.mention}** for "
+    if task.value == "visitortransport":
+        msg += f"transporting **{amount}** visitor{"" if amount == 1 else "1"}."
+    elif task.value == "pizzadelivery":
+        msg += f"delivering **{amount}** pizza{"" if amount == 1 else "s"}."
+    elif task.value == "bank":
+        msg += f"robbing **{amount}** bank{"" if amount == 1 else "s"}."
+    elif task.value == "goldbar":
+        msg += f"stealing **{amount}** gold bar{"" if amount == 1 else "s"}."
+    elif task.value == "trainee":
+        msg += f"training **{amount}** trainee{"" if amount == 1 else "s"}."
+    elif task.value == "basecommander":
+        msg += f"Eliminating **{amount}** Base Commander{"s" if amount > 1 else ""}."
+    msg += f"\nThey now have **{get_points(user.id)}** points"
+    return msg
+
+
+# /log event
+@log_group.command(
+    name="event", description="Log the points for someone attending/hosting an event"
+)
+@privileged_check("logistics")
+@app_commands.describe(
+    user="User who attended/hosted the event",
+    event_type="What type of event",
+    attendance_type="How did they attend the event? (Attending, Hosting or Co-hosting)",
+)
+@app_commands.choices(
+    event_type=[
+        app_commands.Choice(name="Patrol", value="patrol"),
+        app_commands.Choice(name="Gamenight", value="gamenight"),
+        app_commands.Choice(name="Training", value="training"),
+        app_commands.Choice(name="Raid", value="raid"),
+        app_commands.Choice(name="Recruitment Session", value="recruitmentsession"),
+    ]
+)
+@app_commands.choices(
+    attendance_type=[
+        app_commands.Choice(name="Attending", value="attending"),
+        app_commands.Choice(name="Co Hosting", value="cohosting"),
+        app_commands.Choice(name="Hosting", value="hosting"),
+    ]
+)
+@promotion_check
+async def event(
+    interaction: discord.Interaction,
+    user: discord.User,
+    event_type: app_commands.Choice[str],
+    attendance_type: app_commands.Choice[str],
+):
+
+    # Attendance types
+    if attendance_type.value == "attending":
+        added = get_value(event_type.value)
+    else:
+        added = get_value(event_type.value) + get_value(attendance_type.value)
+
+    member = interaction.guild.get_member(user.id)
+
+    booster_bonus = 0
+    if member and discord.utils.get(member.roles, id=booster_id):
+        booster_bonus = get_value("booster")
+        added += booster_bonus
+    add_points(user.id, added)
+    msg = f"Added **{added}** points to **{user.mention}** for {attendance_type.name.lower().replace(" ", "-")} a **{event_type.name}**."
+
+    if booster_bonus > 0:  # Checks if member is a server booster
+        msg += f"\n<:booster_icon:1425732545986822164> That includes an extra **{booster_bonus}** points for being a **Server Booster**! Thank you for supporting the division!"
+
+    msg += f"\nThey now have **{get_points(user.id)}** points."
+
+    return msg 
+
+# Log ad command
+@log_group.command(
+    name="ad", description="Log the points for someone posting an advertisement"
+)
+@privileged_check("logistics")
+@app_commands.describe(user="User who posted the advertisement", amount="Amount of advertisements posted in the past day")
+@promotion_check
+async def log_ad(
+    interaction: discord.Interaction, user: discord.User, amount: int
+    ):
+    if amount == 3 or amount == 6:
+        added = get_value("adX3")
+    else:
+        added = get_value("ad")
+    add_points(user.id, added)
+    msg = f"Added **{added}** points to **{user.mention}** for posting **{amount}** ads in one day"
+    msg += f"\nThey now have **{get_points(user.id)}** points"
+    return msg
+
+# /log recruitment command
+@log_group.command(
+    name="recruitment",
+    description="Log the points for someone recruiting a member in the Discord",
+)
+@privileged_check("logistics")
+@app_commands.describe(
+    user="User who recruited someone",
+    amount="How many people were recruited (Optional)",
+)
+@promotion_check
+async def recruitment(
+    interaction: discord.Interaction, user: discord.User, amount: int = 1
+):
+    added = get_value("recruitment") * amount
+    add_points(user.id, added)
+    msg = f"Added **{added}** points to **{user.mention}** for **recruiting** **{amount}** members.\n"
+    msg += f" They now have **{get_points(user.id)}** points."
+    return msg
+
 """
 LOG AUTO
 """
+
+class View(discord.ui.View):
+    confirm_log = 0
+@discord.ui.button(label="Confirm log", style=discord.ButtonStyle.green, emoji="✅")
+async def button_callback(self, button, interaction):
+    confirm_log = 1
+@discord.ui.button(label="Cancel log", style=discord.ButtonStyle.red, emoji="❌")
+async def button_callback(self, button, interaction):
+    confirm_log = 2
 
 @log_group.command(name="auto", description="Automatically scan a log message and adds points accordingly. Powered by Google AI.")
 @privileged_check("logistics")
 @app_commands.describe(link="Link to the message to scan")
 async def log_auto(interaction: discord.Interaction, link: str):
-    await interaction.response.defer(thinking=True)
+    await interaction.response.defer(thinking=True, ephemeral=True)
 
     try:
         # Parse the message link
@@ -403,8 +592,8 @@ async def log_auto(interaction: discord.Interaction, link: str):
 
     # Replace mentions with readable names
     for user in message.mentions:
-        msg_content = msg_content.replace(f"<@{user.id}>", f"@{user.display_name}")
-        msg_content = msg_content.replace(f"<@!{user.id}>", f"@{user.display_name}")  # some clients use !id
+        msg_content = msg_content.replace(f"<@{user.id}>", f"<@{user.name}><@{user.id}>")
+        msg_content = msg_content.replace(f"<@!{user.id}>", f"<@{user.name}><@{user.id}>")  # some clients use !id
     for role in message.role_mentions:
         msg_content = msg_content.replace(f"<@&{role.id}>", f"@{role.name}")
     for ch in message.channel_mentions:
@@ -442,13 +631,52 @@ async def log_auto(interaction: discord.Interaction, link: str):
     )
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-2.5-flash-lite",
         config=types.GenerateContentConfig(
             system_instruction=prompts["header"]),
         contents=prompt
 )
 
     print(response.text)
+    aiOutput = response.text.lower().splitlines()
+    print(aiOutput)
+    await interaction.send_message(f"Confirm this data? \n {response.text}", view=View(), ephemeral=True)
+    while button_callback.confirm_log == 0:
+        await asyncio.sleep(0.1)
+    if button_callback.confirm_log == 1:
+        msg = ""
+        for items in aiOutput:
+            if "patrol" or "gamenight" or "training" or "raid" or "recruitmentsession" in aiOutput[0]:
+                user_id = int(re.search(r"<@(\d+)>", aiOutput[0]).group(1))
+                event_type = re.search(r"(patrol|gamenight|training|raid|recruitmentsession)", aiOutput[0]).group(1)
+                attendance_type = re.search(r"(attending|hosting|cohosting)", aiOutput[0]).group(1)
+                msg += f"\n{event(interaction=None, user=user_id, event_type=event_type, attendance_type=attendance_type)}"
+            elif "lb" in aiOutput[0]:
+                task = re.search(r"(bank|goldbar|basecommander|pizzadelivery|visitortransport|training)", aiOutput[0]).group(1)
+                user_id = int(re.search(r"<@(\d+)>", aiOutput[0]).group(1))
+                amount = int(re.search(r"(\d+)", aiOutput[0]).group(1))
+                msg += f"\n{log_leaderboard(interaction=None, user=user_id, task=task, amount=amount)}"
+            elif "ad" in aiOutput[0]:
+                user_id = int(re.search(r"<@(\d+)>", aiOutput[0]).group(1))
+                msg += f"\n{log_ad(interaction=None, user=user_id, amount=amount)}"
+            elif "recruitment" in aiOutput[0]:
+                user_id = int(re.search(r"<@(\d+)>", aiOutput[0]).group(1))
+                amount = int(re.search(r"(\d+)", aiOutput[0]).group(1))
+                msg += f"\n{recruitment(interaction=None, user=user_id, amount=amount)}"
+            elif "rally" in aiOutput[0]:
+                user_id = int(re.search(r"<@(\d+)>", aiOutput[0]).group(1))
+                amount = int(re.search(r"(\d+)", aiOutput[0]).group(1))
+                msg += f"\n{rally(interaction=None, user=user_id, amount=amount)}"
+            del aiOutput[0]
+        await interaction.followup.send(f"Logged successfully\n{msg}")
+
+    elif button_callback.confirm_log == 2:
+        await interaction.followup.send("Cancelled", ephemeral=True)
+        return None
+    
+    
+    
+
     
 """
 RUN BOT
