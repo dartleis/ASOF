@@ -1,4 +1,14 @@
-# Imports
+"""
+ASOF BOT V1 LEGACY
+"""
+
+
+
+
+"""
+IMPORTS
+"""
+
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
