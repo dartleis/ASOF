@@ -1,5 +1,5 @@
 """
-ASOF BOT V1.5 BETA
+ASOF BOT V1.5
 """
 
 
