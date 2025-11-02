@@ -21,8 +21,8 @@ import functools
 import tomllib
 from datetime import datetime, timedelta
 from google import genai
-from google.genai import types # type: ignore # ignores VSCode error
-from dotenv import load_dotenv # type: ignore # ignores VSCode error
+from google.genai import types # type: ignore
+from dotenv import load_dotenv # type: ignore
 from types import SimpleNamespace
 
 """
@@ -341,7 +341,7 @@ def promotion_check(_func=None, *, target_param: str = "user"):
     def decorator(func):
         @functools.wraps(func)
         async def wrapper(interaction: discord.Interaction, *args, **kwargs):
-            # ✅ detect if "suppress_send" is passed in kwargs
+            # detect if "suppress_send" is passed in kwargs
             suppress_send = kwargs.pop("suppress_send", False)
 
             base_msg = await func(interaction, *args, **kwargs)
@@ -353,9 +353,9 @@ def promotion_check(_func=None, *, target_param: str = "user"):
                 target = args[0]
 
             if not isinstance(target, (discord.User, discord.Member)):
-                if not suppress_send:  # ✅ only send if not suppressed
+                if not suppress_send:  # only send if not suppressed
                     await interaction.response.send_message(base_msg)
-                return base_msg  # ✅ always return message
+                return base_msg
 
             member = interaction.guild.get_member(target.id)
             if not member:
@@ -371,7 +371,7 @@ def promotion_check(_func=None, *, target_param: str = "user"):
                 await interaction.response.send_message(base_msg, allowed_mentions=discord.AllowedMentions.none())
 
             print(base_msg)
-            return base_msg  # ✅ always return message
+            return base_msg
 
         return wrapper
 
@@ -958,6 +958,8 @@ async def log_auto(interaction: discord.Interaction, link: str):
                 user = interaction.guild.get_member(int(re.search(r"<@(\d+)>", aiOutput[i].lower()).group(1)))
                 amount_attendees = len(aiOutput)
                 msg += f"\n{await rally_logic(interaction, user=user, amount_attendees=amount_attendees)}"
+            else:
+                continue
             print(aiOutput[i])
             i += 1
         await interaction.followup.send(f"Logged successfully\n{msg}")
