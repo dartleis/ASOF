@@ -1,3 +1,0 @@
-delete this text and add your bot token
-example:
-NzM3MjU0MDUzNDUzNzY2MTQ0.Xy-r4Q.aBcDeFgHiJkLmNoPqRsTuVwXyZ1234567890
