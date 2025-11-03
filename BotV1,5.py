@@ -2,8 +2,6 @@
 ASOF BOT V1.5
 """
 
-
-
 """
 IMPORTS
 """
@@ -21,8 +19,8 @@ import functools
 import tomllib
 from datetime import datetime, timedelta
 from google import genai
-from google.genai import types # type: ignore
-from dotenv import load_dotenv # type: ignore
+from google.genai import types  # type: ignore
+from dotenv import load_dotenv  # type: ignore
 from types import SimpleNamespace
 
 """
@@ -59,8 +57,10 @@ PRIVILEGE_GROUP_ROLE_IDS = {
 UTILITY FUNCTIONS
 """
 
+
 def tidy_number(num):
     return int(num) if isinstance(num, float) and num.is_integer() else num
+
 
 def load_json(file, default):
     if not os.path.exists(file):
@@ -121,18 +121,21 @@ def privileged_check(group: str = None, target_param: str | list[str] = None):
 
     return app_commands.check(predicate)
 
+
 """
 POINTS AND CONFIG
 """
+
 
 def edit_rank(name: str, role_id: int, points_required: int, requires_roles: list[int]):
     data = load_config()
     data["ranks"][name] = {
         "role_id": role_id,
         "points_required": points_required,
-        "requires_roles": requires_roles
+        "requires_roles": requires_roles,
     }
     save_config(data)
+
 
 def remove_rank(name: str):
     data = load_config()
@@ -142,30 +145,44 @@ def remove_rank(name: str):
         return True
     return False
 
+
 def list_rank_names():
     return list(load_ranks().keys())
 
+
 async def rank_autocomplete(
-    interaction: discord.Interaction,
-    current: str
+    interaction: discord.Interaction, current: str
 ) -> list[app_commands.Choice[str]]:
     ranks = list_rank_names()
-    choices = [app_commands.Choice(name=r, value=r) for r in ranks if current.lower() in r.lower()]
+    choices = [
+        app_commands.Choice(name=r, value=r)
+        for r in ranks
+        if current.lower() in r.lower()
+    ]
     # Add "Add New" option
     if "add new".startswith(current.lower()):
         choices.insert(0, app_commands.Choice(name="➕ Add New", value="__add_new__"))
     return choices[:25]
 
+
 class RankEditModal(discord.ui.Modal, title="Add or Edit Rank"):
-    def __init__(self, name: str = "", role_id: str = "", points_required: str = "", requires_roles: str = ""):
+    def __init__(
+        self,
+        name: str = "",
+        role_id: str = "",
+        points_required: str = "",
+        requires_roles: str = "",
+    ):
         super().__init__()
         self.rank_name = discord.ui.TextInput(label="Rank Name", default=name)
         self.role_id = discord.ui.TextInput(label="Role ID", default=role_id)
-        self.points_required = discord.ui.TextInput(label="Points Required", default=points_required)
+        self.points_required = discord.ui.TextInput(
+            label="Points Required", default=points_required
+        )
         self.requires_roles = discord.ui.TextInput(
             label="Required Roles (comma-separated IDs)",
             default=requires_roles,
-            required=False
+            required=False,
         )
         self.add_item(self.rank_name)
         self.add_item(self.role_id)
@@ -178,14 +195,17 @@ class RankEditModal(discord.ui.Modal, title="Add or Edit Rank"):
             role_id = int(self.role_id.value.strip())
             points_req = int(self.points_required.value.strip())
             requires = (
-                [int(x.strip()) for x in self.requires_roles.value.split(",") if x.strip()]
+                [
+                    int(x.strip())
+                    for x in self.requires_roles.value.split(",")
+                    if x.strip()
+                ]
                 if self.requires_roles.value.strip()
                 else []
             )
             edit_rank(name, role_id, points_req, requires)
             msg = f"✅ Rank **{name}** saved successfully."
-            await interaction.response.send_message(msg, ephemeral=True
-            )
+            await interaction.response.send_message(msg, ephemeral=True)
         except Exception as e:
             msg = f"❌ Error: {e}"
             await interaction.response.send_message(msg, ephemeral=True)
@@ -202,6 +222,7 @@ def save_points(data):
     for uid, info in data.items():
         info["points"] = tidy_number(info.get("points", 0))
     save_json(POINTS_FILE, data)
+
 
 def load_values():
     default_values = {
@@ -227,7 +248,7 @@ def load_values():
         "goldbar": 0,
         "trainee": 0,
         "visitortransport": 0,
-        "pizzadelivery": 0
+        "pizzadelivery": 0,
     }
     if not os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "w") as f:
@@ -246,6 +267,7 @@ def load_values():
 
     return data["values"]
 
+
 def load_config():
     if not os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "w") as f:
@@ -253,12 +275,15 @@ def load_config():
     with open(CONFIG_FILE, "r") as f:
         return json.load(f)
 
+
 def save_config(data):
     with open(CONFIG_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
+
 def get_value(key: str):
     return load_config()["values"].get(key, 0)
+
 
 def set_value(key: str, value: float):
     data = load_config()
@@ -267,21 +292,25 @@ def set_value(key: str, value: float):
     data["values"][key] = tidy_number(value)
     save_config(data)
 
+
 def load_ranks():
     return load_config().get("ranks", {})
+
 
 def add_rank(name: str, role_id: int, points_required: int, requires_roles: list[int]):
     data = load_config()
     data["ranks"][name] = {
         "role_id": role_id,
         "points_required": points_required,
-        "requires_roles": requires_roles
+        "requires_roles": requires_roles,
     }
     save_config(data)
+
 
 """
 POINTS HELPERS
 """
+
 
 def get_points(uid: int):
     return load_points().get(str(uid), {}).get("points", 0)
@@ -300,9 +329,11 @@ def set_points(uid: int, amount: int):
     entry["points"] = amount
     save_points(data)
 
+
 """
 CHECK FOR PROMOTIONS
 """
+
 
 async def check_for_promotion(member: discord.Member):
     points = get_points(member.id)
@@ -310,8 +341,7 @@ async def check_for_promotion(member: discord.Member):
     user_role_ids = [r.id for r in member.roles]
 
     sorted_ranks = sorted(
-        ranks.items(),
-        key=lambda x: x[1]["points_required"], reverse=True
+        ranks.items(), key=lambda x: x[1]["points_required"], reverse=True
     )
 
     current_highest_rank_points = 0
@@ -329,13 +359,14 @@ async def check_for_promotion(member: discord.Member):
             continue
 
         if (
-            points >= required_points and
-            all(rid in user_role_ids for rid in required_roles) and
-            role_id not in user_role_ids
+            points >= required_points
+            and all(rid in user_role_ids for rid in required_roles)
+            and role_id not in user_role_ids
         ):
             return name
 
     return None
+
 
 def promotion_check(_func=None, *, target_param: str = "user"):
     def decorator(func):
@@ -368,7 +399,9 @@ def promotion_check(_func=None, *, target_param: str = "user"):
                 base_msg += f"\n**{member.mention}** is due for promotion to **{promotion_due}**."
 
             if not suppress_send:
-                await interaction.response.send_message(base_msg, allowed_mentions=discord.AllowedMentions.none())
+                await interaction.response.send_message(
+                    base_msg, allowed_mentions=discord.AllowedMentions.none()
+                )
 
             print(base_msg)
             return base_msg
@@ -395,9 +428,9 @@ intents.members = True
 intents.guilds = True
 
 bot = commands.Bot(command_prefix="/", intents=intents)
-points_group = app_commands.Group(name="points", description= "EXP system")
-log_group = app_commands.Group(name="log", description= "Logging actions")
-stats_group = app_commands.Group(name="stats", description= "Bot statistics")
+points_group = app_commands.Group(name="points", description="EXP system")
+log_group = app_commands.Group(name="log", description="Logging actions")
+stats_group = app_commands.Group(name="stats", description="Bot statistics")
 config_group = app_commands.Group(name="config", description="Bot configuration")
 bot.tree.add_command(points_group)
 bot.tree.add_command(log_group)
@@ -409,6 +442,7 @@ load_dotenv()
 EVENTS
 """
 
+
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
@@ -418,6 +452,7 @@ async def on_ready():
         print(f"Synced {len(synced)} commands.")
     except Exception as e:
         print(f"Command sync failed: {e}")
+
 
 @bot.event
 async def on_member_join(member):
@@ -456,9 +491,11 @@ async def cleanup_inactive_users():
             f"Removed {len(removed)} users inactive for over {REMOVE_AFTER_DAYS} days."
         )
 
+
 """
 COMMANDS
 """
+
 
 # /stats ping
 @stats_group.command(name="ping", description="Check the bot latency.")
@@ -466,6 +503,7 @@ async def ping(interaction: discord.Interaction):
     msg = f"Pong! {round(bot.latency * 1000)}ms"
     await interaction.response.send_message(msg, ephemeral=True)
     print(msg)
+
 
 # /config values
 @config_group.command(
@@ -518,6 +556,7 @@ async def config_values(
     await interaction.response.send_message(msg)
     print(msg)
 
+
 # /config ranks
 @config_group.command(name="ranks", description="Add or edit a rank")
 @privileged_check("config")
@@ -534,9 +573,10 @@ async def config_ranks_edit(interaction: discord.Interaction, rank: str):
             name=rank,
             role_id=str(r.get("role_id", "")),
             points_required=str(r.get("points_required", "")),
-            requires_roles=",".join(str(x) for x in r.get("requires_roles", []))
+            requires_roles=",".join(str(x) for x in r.get("requires_roles", [])),
         )
         await interaction.response.send_modal(modal)
+
 
 @config_group.command(name="ranks_remove", description="Remove a rank")
 @privileged_check("config")
@@ -558,6 +598,7 @@ async def config_ranks_remove(interaction: discord.Interaction, rank: str):
         await interaction.response.send_message(msg, ephemeral=True)
         print(msg)
 
+
 @stats_group.command(name="ranks", description="List all ranks and their requirements")
 async def config_ranks_list(interaction: discord.Interaction):
     ranks = load_ranks()
@@ -569,16 +610,15 @@ async def config_ranks_list(interaction: discord.Interaction):
 
     msg = "**Configured Ranks:**\n\n"
     for name, info in ranks.items():
-        required_roles = ', '.join(f"<@&{r}>" for r in info['requires_roles']) or "None"
+        required_roles = ", ".join(f"<@&{r}>" for r in info["requires_roles"]) or "None"
         msg += (
             f"**{name} (<@&{info['role_id']}>)**\n"
             f"Points: {info['points_required']}\n"
             f"Required Roles: {required_roles}\n\n"
-    )
+        )
 
     await interaction.response.send_message(msg, ephemeral=True)
     print(msg)
-
 
 
 # /points check command
@@ -594,7 +634,7 @@ async def points_check(interaction: discord.Interaction, user: discord.User = No
     if points >= 5000:
         msg = "🤑 "
     elif points == 100:
-       msg = "💯"
+        msg = "💯"
     msg += f"**{target.mention}** has **{points}** points."
     return msg
 
@@ -625,8 +665,11 @@ async def points_subtract(
     add_points(user.id, -abs(amount))
     amount = tidy_number(amount)
     msg = f"Removed **{abs(amount)}** points from **{user.mention}**, bringing their total to **{get_points(user.id)}**."
-    await interaction.response.send_message(msg, allowed_mentions=discord.AllowedMentions.none())
+    await interaction.response.send_message(
+        msg, allowed_mentions=discord.AllowedMentions.none()
+    )
     print(msg)
+
 
 # /points set command
 @points_group.command(name="set", description="Set the points of a user")
@@ -655,6 +698,7 @@ async def rally_logic(interaction, user, amount_attendees):
     msg += f"\nThey now have **{get_points(user.id)}** points"
     return msg
 
+
 @log_group.command(
     name="rally", description="Log the points for someone attending the weekly rally"
 )
@@ -663,7 +707,6 @@ async def rally_logic(interaction, user, amount_attendees):
     user="User who attended the rally",
     amount_attendees="Amount of total attendees were at the rally",
 )
-
 @promotion_check
 async def rally(
     interaction: discord.Interaction,
@@ -672,6 +715,7 @@ async def rally(
 ):
     msg = await rally_logic(interaction, user, amount_attendees)
     return msg
+
 
 # /log leaderboard command
 async def log_leaderboard_logic(interaction, user, task, amount):
@@ -694,6 +738,7 @@ async def log_leaderboard_logic(interaction, user, task, amount):
         msg += f"Eliminating **{amount}** Base Commander{"s" if amount > 1 else ""}."
     msg += f"\nThey now have **{get_points(user.id)}** points"
     return msg
+
 
 @log_group.command(
     name="leaderboard",
@@ -731,12 +776,13 @@ async def event_logic(interaction, user, event_type, attendance_type):
     if isinstance(event_type, str):
         event_type = SimpleNamespace(value=event_type, name=event_type.capitalize())
     if isinstance(attendance_type, str):
-        attendance_type = SimpleNamespace(value=attendance_type, name=attendance_type.capitalize() + "ing")
-    
-    if attendance_type.value == "attending":
-        added = get_value(event_type.value)
-    else:
-        added = get_value(event_type.value) + get_value(attendance_type.value)
+        attendance_type = SimpleNamespace(
+            value=attendance_type, name=attendance_type.capitalize()
+        )
+
+    added = get_value(event_type.value)
+    if not attendance_type.value == "attending":
+        added += get_value(attendance_type.value)
 
     member = interaction.guild.get_member(user.id)
 
@@ -752,7 +798,8 @@ async def event_logic(interaction, user, event_type, attendance_type):
 
     msg += f"\nThey now have **{get_points(user.id)}** points."
 
-    return msg 
+    return msg
+
 
 @log_group.command(
     name="event", description="Log the points for someone attending/hosting an event"
@@ -789,6 +836,7 @@ async def event(
     msg = await event_logic(interaction, user, event_type, attendance_type)
     return msg
 
+
 # Log ad command
 async def ad_logic(interaction, user, amount):
     if amount == 3 or amount == 6:
@@ -800,17 +848,20 @@ async def ad_logic(interaction, user, amount):
     msg += f"\nThey now have **{get_points(user.id)}** points"
     return msg
 
+
 @log_group.command(
     name="ad", description="Log the points for someone posting an advertisement"
 )
 @privileged_check("logistics")
-@app_commands.describe(user="User who posted the advertisement", amount="Amount of advertisements posted in the past day")
+@app_commands.describe(
+    user="User who posted the advertisement",
+    amount="Amount of advertisements posted in the past day",
+)
 @promotion_check
-async def log_ad(
-    interaction: discord.Interaction, user: discord.User, amount: int
-    ):
-    msg = await  ad_logic(interaction, user, amount)
+async def log_ad(interaction: discord.Interaction, user: discord.User, amount: int):
+    msg = await ad_logic(interaction, user, amount)
     return msg
+
 
 # /log recruitment command
 async def recruitment_logic(interaction, user, amount):
@@ -819,6 +870,7 @@ async def recruitment_logic(interaction, user, amount):
     msg = f"Added **{added}** points to **{user.mention}** for **recruiting** **{amount}** members.\n"
     msg += f" They now have **{get_points(user.id)}** points."
     return msg
+
 
 @log_group.command(
     name="recruitment",
@@ -840,15 +892,18 @@ async def recruitment(
 """
 LOG AUTO
 """
+
+
 class ConfirmLogView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=60)
         self.value = None  # stores the button result
 
     @discord.ui.button(label="Confirm log", style=discord.ButtonStyle.green, emoji="✅")
-    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def confirm(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         self.value = True
-        await interaction.response.send_message("✅ Log confirmed!", ephemeral=True)
         self.stop()
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red, emoji="❌")
@@ -858,7 +913,10 @@ class ConfirmLogView(discord.ui.View):
         self.stop()
 
 
-@log_group.command(name="auto", description="Automatically scan a log message and adds points accordingly. Powered by Google AI.")
+@log_group.command(
+    name="auto",
+    description="Automatically scan a log message and adds points accordingly. Powered by Google AI.",
+)
 @privileged_check("logistics")
 @app_commands.describe(link="Link to the message to scan")
 async def log_auto(interaction: discord.Interaction, link: str):
@@ -867,13 +925,17 @@ async def log_auto(interaction: discord.Interaction, link: str):
     try:
         # Parse the message link
         parts = link.split("/")
-        guild_id, channel_id, message_id = int(parts[-3]), int(parts[-2]), int(parts[-1])
+        guild_id, channel_id, message_id = (
+            int(parts[-3]),
+            int(parts[-2]),
+            int(parts[-1]),
+        )
         channel = await bot.fetch_channel(channel_id)
         message = await channel.fetch_message(message_id)
     except Exception as e:
         await interaction.followup.send(f"Invalid message link: {e}")
         return
-    
+
     msg_content = message.content
     for role in message.role_mentions:
         msg_content = msg_content.replace(f"<@&{role.id}>", f"@{role.name}")
@@ -890,7 +952,7 @@ async def log_auto(interaction: discord.Interaction, link: str):
         log_type = "event"
     elif "ad" in channel.name.lower():
         log_type = "ad"
-    elif "leaderboard" in channel.category.name.lower():      # Leaderboard logs
+    elif "leaderboard" in channel.category.name.lower():  # Leaderboard logs
         if "bank" in channel.name.lower():
             log_type = "bank"
         elif "visitor" in channel.name.lower():
@@ -901,74 +963,231 @@ async def log_auto(interaction: discord.Interaction, link: str):
             log_type = "basecommander"
         elif "training" in channel.name.lower():
             log_type = "training"
-    
+
     # Build the prompt
     with open("prompts.toml", "rb") as f:
         prompts = tomllib.load(f)
-    prompt = (prompts[log_type], prompts["ignore"], f"Message author: <@{author}>", msg_content, prompts[log_type + "_footer"])
-    prompt = "\n".join(prompt)
-    client = genai.Client(
-        api_key=os.getenv("GENAI_API_KEY")
+    prompt = (
+        prompts[log_type],
+        prompts["ignore"],
+        f"Message author: <@{author}>",
+        msg_content,
+        prompts[log_type + "_footer"],
     )
+    prompt = "\n".join(prompt)
+    client = genai.Client(api_key=os.getenv("GENAI_API_KEY"))
 
     response = client.models.generate_content(
         model="gemini-2.5-flash-lite",
-        config=types.GenerateContentConfig(
-            system_instruction=prompts["header"]),
-        contents=prompt
-)
+        config=types.GenerateContentConfig(system_instruction=prompts["header"]),
+        contents=prompt,
+    )
 
     print(response.text)
     aiOutput = response.text.lower().splitlines()
     print(aiOutput)
     view = ConfirmLogView()
-    await interaction.followup.send(f"Confirm this data?\n>>> {response.text}", view=view, ephemeral=True)
+    await interaction.edit_original_response(
+        f"Confirm this data?\n>>> {response.text}", view=view, ephemeral=True
+    )
     await view.wait()  # Wait for user to press a button
 
     if view.value is None:
-        await interaction.followup.send("Timed out.", ephemeral=True)
+        await interaction.edit_original_response("Timed out.", ephemeral=True)
     elif view.value:
         msg = ""
         i = 0
         for items in aiOutput:
             lower = items.lower()
-            if any(word in aiOutput[i].lower() for word in ["patrol", "gamenight", "training", "raid", "recruitmentsession"]):
-                user = interaction.guild.get_member(int(re.search(r"<@(\d+)>", aiOutput[i].lower()).group(1)))
-                event_type = re.search(r"(patrol|gamenight|training|raid|recruitmentsession)", aiOutput[i].lower()).group(1)
-                attendance_type = re.search(r"(attend|host|cohost)", aiOutput[i].lower()).group(1)
-                attendance_type + "ing"
+            if any(
+                word in aiOutput[i].lower()
+                for word in [
+                    "patrol",
+                    "gamenight",
+                    "training",
+                    "raid",
+                    "recruitmentsession",
+                ]
+            ):
+                user = interaction.guild.get_member(
+                    int(re.search(r"<@(\d+)>", aiOutput[i].lower()).group(1))
+                )
+                event_type = re.search(
+                    r"(patrol|gamenight|training|raid|recruitmentsession)",
+                    aiOutput[i].lower(),
+                ).group(1)
+                attendance_type = re.search(
+                    r"(attend|host|cohost)", aiOutput[i].lower()
+                ).group(1)
+                attendance_type += "ing"
+                print(attendance_type)
                 msg += f"\n{await event_logic(interaction, user=user, event_type=event_type, attendance_type=attendance_type)}"
-                msg += await promotion_check_2(interaction, user=user, suppress_send=True)
+                msg += await promotion_check_2(
+                    interaction, user=user, suppress_send=True
+                )
             elif "lb" in aiOutput[i]:
-                task = re.search(r"(bank|goldbar|basecommander|pizzadelivery|visitortransport|training)", aiOutput[i].lower()).group(1)
-                user = interaction.guild.get_member(int(re.search(r"<@(\d+)>", aiOutput[i].lower()).group(1)))
+                task = re.search(
+                    r"(bank|goldbar|basecommander|pizzadelivery|visitortransport|training)",
+                    aiOutput[i].lower(),
+                ).group(1)
+                user = interaction.guild.get_member(
+                    int(re.search(r"<@(\d+)>", aiOutput[i].lower()).group(1))
+                )
                 all_numbers = re.findall(r"\b\d+\b", lower)
-                amount = int(all_numbers[-1]) if all_numbers else 1     # make sure it gets the amount, not the user ID
+                amount = (
+                    int(all_numbers[-1]) if all_numbers else 1
+                )  # make sure it gets the amount, not the user ID
                 msg += f"\n{await log_leaderboard_logic(interaction, user=user, task=task, amount=amount)}"
             elif "ad" in aiOutput[i]:
-                user = interaction.guild.get_member(int(re.search(r"<@(\d+)>", aiOutput[i].lower()).group(1)))
+                user = interaction.guild.get_member(
+                    int(re.search(r"<@(\d+)>", aiOutput[i].lower()).group(1))
+                )
                 all_numbers = re.findall(r"\b\d+\b", lower)
-                amount = int(all_numbers[-1]) if all_numbers else 1      # make sure it gets the amount, not the user ID
+                amount = (
+                    int(all_numbers[-1]) if all_numbers else 1
+                )  # make sure it gets the amount, not the user ID
                 msg += f"\n{await ad_logic(interaction, user=user, amount=amount)}"
             elif "recruitment" in aiOutput[i]:
-                user = interaction.guild.get_member(int(re.search(r"<@(\d+)>", aiOutput[i].lower()).group(1)))
+                user = interaction.guild.get_member(
+                    int(re.search(r"<@(\d+)>", aiOutput[i].lower()).group(1))
+                )
                 all_numbers = re.findall(r"\b\d+\b", lower)
-                amount = int(all_numbers[-1]) if all_numbers else 1      # make sure it gets the amount, not the user ID
+                amount = (
+                    int(all_numbers[-1]) if all_numbers else 1
+                )  # make sure it gets the amount, not the user ID
                 msg += f"\n{await recruitment_logic(interaction, user=user, amount=amount)}"
             elif "rally" in aiOutput[i]:
-                user = interaction.guild.get_member(int(re.search(r"<@(\d+)>", aiOutput[i].lower()).group(1)))
+                user = interaction.guild.get_member(
+                    int(re.search(r"<@(\d+)>", aiOutput[i].lower()).group(1))
+                )
                 amount_attendees = len(aiOutput)
                 msg += f"\n{await rally_logic(interaction, user=user, amount_attendees=amount_attendees)}"
             else:
                 continue
             print(aiOutput[i])
             i += 1
-        await interaction.followup.send(f"Logged successfully\n{msg}")
+        await interaction.edit_original_response(
+            f"Logged successfully\n{msg}",
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
     else:
         await interaction.followup.send("Cancelled.", ephemeral=True)
         await asyncio.sleep(0.1)
-    
-    
+
+
+"""
+POINTS LEADERBOARD
+"""
+
+
+# Autocomplete function
+async def leaderboard_page_autocomplete(interaction: discord.Interaction, current: str):
+    points_data = load_points()
+    per_page = 10
+    total_pages = (len(points_data) + per_page - 1) // per_page or 1
+
+    suggestions = [
+        app_commands.Choice(name=str(i), value=str(i))
+        for i in range(1, total_pages + 1)
+    ]
+    suggestions.append(app_commands.Choice(name="all", value="all"))
+
+    return [s for s in suggestions if current.lower() in s.name.lower()]
+
+
+# /leaderboard command
+@bot.tree.command(
+    name="leaderboard", description="Shows how many points people have on a leaderboard"
+)
+@app_commands.describe(page="Select a page number or 'all'")
+@app_commands.autocomplete(page=leaderboard_page_autocomplete)
+async def leaderboard(interaction: discord.Interaction, page: str):
+    points_data = load_points()
+    guild = interaction.guild
+    members = {str(m.id): m for m in guild.members if not m.bot}
+
+    leaderboard_list = [
+        (int(uid), info.get("points", 0))
+        for uid, info in points_data.items()
+        if uid in members
+    ]
+    leaderboard_list.sort(key=lambda x: x[1], reverse=True)
+
+    if len(leaderboard_list) == 0:
+        await interaction.response.send_message("No one is on the leaderboard yet.")
+        return
+
+    per_page = 10
+    total_pages = (len(leaderboard_list) + per_page - 1) // per_page
+
+    # Handle 'all' mode
+    if page.lower() == "all":
+        display_list = leaderboard_list
+        ephemeral = True
+        page_num = 1
+    else:
+        try:
+            page_num = int(page)
+            if page_num < 1 or page_num > total_pages:
+                await interaction.response.send_message(
+                    f"Invalid page number. There {'are only **'+str(total_pages)+'** pages' if total_pages > 1 else 'is only **1** page'}.",
+                    ephemeral=True,
+                )
+                return
+        except ValueError:
+            await interaction.response.send_message(
+                f"Page must be {'a number (1 to '+str(total_pages)+')' if total_pages > 1 else '1'} or `all`.",
+                ephemeral=True,
+            )
+            return
+
+        start_index = (page_num - 1) * per_page
+        end_index = start_index + per_page
+        display_list = leaderboard_list[start_index:end_index]
+        ephemeral = False
+
+    # Build leaderboard text
+    lines = []
+    rank_offset = 0 if page.lower() == "all" else (per_page * (page_num - 1))
+    for rank, (user_id, points) in enumerate(display_list, start=1 + rank_offset):
+        member = members.get(str(user_id))
+        name = member.mention if member else f"Unknown User ({user_id})"
+        points_display = int(points) if float(points).is_integer() else points
+        lines.append(f"**#{rank}** — {name}: {points_display} points")
+
+    if page.lower() == "all":
+        title = f"🏆 Full Leaderboard — {len(leaderboard_list)} players"
+    else:
+        title = f"🏆 Leaderboard — Page {page_num}/{total_pages}"
+
+    # Split message into chunks to respect Discord’s 2000-character limit
+    max_length = 1900
+    message = f"{title}\n"
+    chunks = []
+
+    for line in lines:
+        if len(message) + len(line) + 1 > max_length:
+            chunks.append(message)
+            message = ""
+        message += line + "\n"
+    if message:
+        chunks.append(message)
+
+    # Send first chunk as initial response
+    await interaction.response.send_message(
+        chunks[0],
+        allowed_mentions=discord.AllowedMentions.none(),
+        ephemeral=ephemeral,
+    )
+
+    # Send remaining chunks as followups
+    for chunk in chunks[1:]:
+        await interaction.followup.send(
+            chunk,
+            allowed_mentions=discord.AllowedMentions.none(),
+            ephemeral=ephemeral,
+        )
+
 
 """
 RUN BOT
