@@ -936,6 +936,7 @@ async def log_auto(interaction: discord.Interaction, link: str):
                 user = interaction.guild.get_member(int(re.search(r"<@(\d+)>", aiOutput[i].lower()).group(1)))
                 event_type = re.search(r"(patrol|gamenight|training|raid|recruitmentsession)", aiOutput[i].lower()).group(1)
                 attendance_type = re.search(r"(attend|host|cohost)", aiOutput[i].lower()).group(1)
+                attendance_type + "ing"
                 msg += f"\n{await event_logic(interaction, user=user, event_type=event_type, attendance_type=attendance_type)}"
                 msg += await promotion_check_2(interaction, user=user, suppress_send=True)
             elif "lb" in aiOutput[i]:
