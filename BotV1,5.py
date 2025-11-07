@@ -207,7 +207,7 @@ class RankEditModal(discord.ui.Modal, title="Add or Edit Rank"):
             msg = f"✅ Rank **{name}** saved successfully."
             await interaction.response.send_message(msg, ephemeral=True)
         except Exception as e:
-            msg = f"❌ Error: {e}"
+            msg = f"Error: {e}"
             await interaction.response.send_message(msg, ephemeral=True)
 
 
@@ -774,7 +774,7 @@ async def log_leaderboard(
 # /log event command
 async def event_logic(interaction, user, event_type, attendance_type):
     if isinstance(event_type, str):
-        event_type = SimpleNamespace(value=event_type, name=event_type.capitalize())
+        event_type = SimpleNamespace(value=event_type.replace(" ", ""), name=event_type.capitalize())
     if isinstance(attendance_type, str):
         attendance_type = SimpleNamespace(
             value=attendance_type, name=attendance_type.capitalize()
@@ -909,18 +909,17 @@ class ConfirmLogView(discord.ui.View):
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red, emoji="❌")
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.value = False
-        await interaction.response.send_message("❌ Log cancelled.", ephemeral=True)
         self.stop()
 
 
 @log_group.command(
     name="auto",
-    description="Automatically scan a log message and adds points accordingly. Powered by Google AI.",
+    description=f"Automatically scan a log message and adds points accordingly. Powered by Google AI.",
 )
 @privileged_check("logistics")
 @app_commands.describe(link="Link to the message to scan")
 async def log_auto(interaction: discord.Interaction, link: str):
-    await interaction.response.defer(thinking=True, ephemeral=True)
+    await interaction.response.send_message("<:gemini:1436266313109733397> Analysing log <a:loading3:1436270707267993610>")
 
     try:
         # Parse the message link
@@ -933,7 +932,9 @@ async def log_auto(interaction: discord.Interaction, link: str):
         channel = await bot.fetch_channel(channel_id)
         message = await channel.fetch_message(message_id)
     except Exception as e:
-        await interaction.followup.send(f"Invalid message link: {e}")
+        await interaction.edit_original_response(content=f"Invalid message link: {e}")
+        await asyncio.sleep(5)
+        await interaction.delete_original_response()
         return
 
     msg_content = message.content
@@ -987,20 +988,22 @@ async def log_auto(interaction: discord.Interaction, link: str):
     aiOutput = response.text.lower().splitlines()
     print(aiOutput)
     view = ConfirmLogView()
-    await interaction.edit_original_response(
+    await interaction.followup.send(
         f"Confirm this data?\n>>> {response.text}", view=view, ephemeral=True
     )
-    await view.wait()  # Wait for user to press a button
+    await view.wait()
 
     if view.value is None:
-        await interaction.edit_original_response("Timed out.", ephemeral=True)
+        await interaction.edit_original_response(content="Timed out")
+        await asyncio.sleep(5)
+        await interaction.delete_original_response()
     elif view.value:
         msg = ""
         i = 0
         for items in aiOutput:
             lower = items.lower()
             if any(
-                word in aiOutput[i].lower()
+                word in aiOutput[i].lower().replace(" ", "")
                 for word in [
                     "patrol",
                     "gamenight",
@@ -1013,12 +1016,13 @@ async def log_auto(interaction: discord.Interaction, link: str):
                     int(re.search(r"<@(\d+)>", aiOutput[i].lower()).group(1))
                 )
                 event_type = re.search(
-                    r"(patrol|gamenight|training|raid|recruitmentsession)",
-                    aiOutput[i].lower(),
+                    r"(patrol|gamenight|training|raid|recruitment session)",
+                    aiOutput[i].lower()
                 ).group(1)
                 attendance_type = re.search(
-                    r"(attend|host|cohost)", aiOutput[i].lower()
+                    r"(attend|cohost|host)", aiOutput[i].lower()
                 ).group(1)
+
                 attendance_type += "ing"
                 print(attendance_type)
                 msg += f"\n{await event_logic(interaction, user=user, event_type=event_type, attendance_type=attendance_type)}"
@@ -1026,10 +1030,6 @@ async def log_auto(interaction: discord.Interaction, link: str):
                     interaction, user=user, suppress_send=True
                 )
             elif "lb" in aiOutput[i]:
-                task = re.search(
-                    r"(bank|goldbar|basecommander|pizzadelivery|visitortransport|training)",
-                    aiOutput[i].lower(),
-                ).group(1)
                 user = interaction.guild.get_member(
                     int(re.search(r"<@(\d+)>", aiOutput[i].lower()).group(1))
                 )
@@ -1037,8 +1037,8 @@ async def log_auto(interaction: discord.Interaction, link: str):
                 amount = (
                     int(all_numbers[-1]) if all_numbers else 1
                 )  # make sure it gets the amount, not the user ID
-                msg += f"\n{await log_leaderboard_logic(interaction, user=user, task=task, amount=amount)}"
-            elif "ad" in aiOutput[i]:
+                msg += f"\n{await log_leaderboard_logic(interaction, user=user, task=log_type, amount=amount)}"
+            elif log_type == "ad":
                 user = interaction.guild.get_member(
                     int(re.search(r"<@(\d+)>", aiOutput[i].lower()).group(1))
                 )
@@ -1047,7 +1047,7 @@ async def log_auto(interaction: discord.Interaction, link: str):
                     int(all_numbers[-1]) if all_numbers else 1
                 )  # make sure it gets the amount, not the user ID
                 msg += f"\n{await ad_logic(interaction, user=user, amount=amount)}"
-            elif "recruitment" in aiOutput[i]:
+            elif log_type == "recruitment":
                 user = interaction.guild.get_member(
                     int(re.search(r"<@(\d+)>", aiOutput[i].lower()).group(1))
                 )
@@ -1066,12 +1066,11 @@ async def log_auto(interaction: discord.Interaction, link: str):
                 continue
             print(aiOutput[i])
             i += 1
-        await interaction.edit_original_response(
-            f"Logged successfully\n{msg}",
-            allowed_mentions=discord.AllowedMentions.none(),
-        )
+        await interaction.edit_original_response(content=f"Logged successfully\n{msg}")
     else:
-        await interaction.followup.send("Cancelled.", ephemeral=True)
+        await interaction.edit_original_response(content="Cancelled.")
+        await asyncio.sleep(5)
+        await interaction.delete_original_response()
         await asyncio.sleep(0.1)
 
 

@@ -1,7 +1,7 @@
 # TOML file for storing AI prompts
 
 header = "You are a log analyzer for a discord server. Your job is to analyze the log sent to you. Any users will user their user ID structured as <@UserIdNumber> and should be returned in your response in the exact same way."
-event = "The log you will receive is an event log. You need to identify which of these event types it falls under: 'Recuitment Session', 'Patrol', 'Training', 'Raid' or 'Rally'. The majority of the time, the type will be noted in the log message, if it is not, and the type of event is not easily determined, mark it as a 'Patrol'. Once you have determined the event type, scan the log for users marked as 'Attendees', 'Host' and 'Co host'. If any field are missing, such as there being no Co host, ignore the Co host line. If the event says 'practice', for example 'practice raid', the event is to be marked as a training. Note: If the event type is a Rally, there is no Host, only Attendees."
+event = "The log you will receive is an event log. You need to identify which of these event types it falls under: 'Recruitment Session', 'Patrol', 'Training', 'Raid' or 'Rally'. The majority of the time, the type will be noted in the log message, if it is not, and the type of event is not easily determined, mark it as a 'Patrol'. Once you have determined the event type, scan the log for users marked as 'Attendees', 'Host' and 'Co host'. If any field are missing, such as there being no Co host, ignore the Co host line. If the event says 'practice', for example 'practice raid', the event is to be marked as a training. Note: If the event type is a Rally, there is no Host, only Attendees."
 event_footer = """
 Structure your response as follows:
 <host user id> <event type> Host
@@ -44,4 +44,4 @@ recruitment_footer = """
 Structure your response as follows:
 <@user id> <number> recruitment
 """
-ignore = "Ignore any additional text in the log that is unrelated. Ignore any attachments included in the log. Ignore any role mentions, such as @Logistcs Department. If there is no user specified, use the user ID of the message author"
+ignore = "Ignore any additional text in the log that is unrelated. Ignore any attachments included in the log. Ignore any role mentions, such as @Logistcs Department. If there is no user specified, use the user ID of the message author."
